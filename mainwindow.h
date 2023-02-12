@@ -19,7 +19,6 @@ public:
 
     void parseJsonToTreeView(QJsonObject convertedJsonString, QStandardItemModel *model, QStandardItem *parent = NULL);
     QJsonDocument temp;
-    bool isTopLevel = false;
 
 private:
     Ui::MainWindow *ui;
