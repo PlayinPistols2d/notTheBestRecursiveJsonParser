@@ -1,0 +1,211 @@
+// mainwindow.h
+#ifndef MAINWINDOW_H
+#define MAINWINDOW_H
+
+#include <QMainWindow>
+#include <QGraphicsScene>
+#include <QGraphicsView>
+
+class MainWindow : public QMainWindow
+{
+    Q_OBJECT
+
+public:
+    MainWindow(QWidget *parent = nullptr);
+    ~MainWindow();
+
+private:
+    QGraphicsScene *scene;
+    QGraphicsView *view;
+
+    enum ShapeType {
+        Rectangle,
+        Ellipse
+    };
+
+    ShapeType currentShapeType;
+
+    // Методы для создания меню и действий
+    void createActions();
+    void createMenus();
+
+    // Действия
+    QAction *rectangleAction;
+    QAction *ellipseAction;
+    QAction *clearAction;
+
+    // Выбранные элементы и текущая линия
+    QList<QGraphicsItem*> selectedItems;
+    QGraphicsLineItem *currentLineItem;
+
+    // Хэш-таблица для хранения списка смежности
+    QHash<QGraphicsItem*, QList<QGraphicsItem*>> adjacencyList;
+
+    // Обработчики событий мыши
+    void mousePressEvent(QMouseEvent *event);
+    void mouseMoveEvent(QMouseEvent *event);
+    void mouseReleaseEvent(QMouseEvent *event);
+};
+
+#endif // MAINWINDOW_H
+
+
+// // mainwindow.cpp
+#include "mainwindow.h"
+
+#include <QMenuBar>
+#include <QMouseEvent>
+#include <QHash>
+#include <QMessageBox>
+#include <QDebug>
+
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent)
+{
+    // Создание сцены и виджета
+    scene = new QGraphicsScene(this);
+    view = new QGraphicsView(scene, this);
+    setCentralWidget(view);
+
+    // Создание меню и действий
+    createActions();
+    createMenus();
+
+    // Установка типа фигуры по умолчанию
+    currentShapeType = Rectangle;
+}
+
+MainWindow::~MainWindow()
+{
+}
+
+void MainWindow::createActions()
+{
+    // Создание действий
+    rectangleAction = new QAction(tr("Rectangle"), this);
+    rectangleAction->setCheckable(true);
+    rectangleAction->setChecked(true);
+    connect(rectangleAction, &QAction::triggered, this, [this]() {
+        currentShapeType = Rectangle;
+    });
+
+    ellipseAction = new QAction(tr("Ellipse"), this);
+    ellipseAction->setCheckable(true);
+    connect(ellipseAction, &QAction::triggered, this, [this]() {
+        currentShapeType = Ellipse;
+    });
+
+    clearAction = new QAction(tr("Clear"), this);
+    connect(clearAction, &QAction::triggered, this, [this]() {
+        scene->clear();
+        adjacencyList.clear();
+    });
+}
+
+void MainWindow::createMenus()
+{
+    // Создание меню
+    QMenu *shapeMenu = menuBar()->addMenu(tr("Shape"));
+    shapeMenu->addAction(rectangleAction);
+    shapeMenu->addAction(ellipseAction);
+
+    QMenu *editMenu = menuBar()->addMenu(tr("Edit"));
+    editMenu->addAction(clearAction);
+}
+
+void MainWindow::mousePressEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton) {
+        // Добавление фигуры на сцену и выбор ее
+        QGraphicsItem *item = nullptr;
+        if (currentShapeType == Rectangle) {
+            item = scene->addRect(event->x() - 50, event->y() - 25, 100, 50);
+        } else if (currentShapeType == Ellipse) {
+            item = scene->addEllipse(event->x() - 50, event->y() - 25, 100, 50);
+        }
+        item->setFlags(QGraphicsItem::ItemIsMovable | QGraphicsItem::ItemIsSelectable);
+        selectedItems.append(item);
+
+        // Установка текущей линии для связывания элементов
+        if (selectedItems.size() == 2) {
+            currentLineItem = scene->addLine(QLineF(selectedItems.first()->pos(), selectedItems.last()->pos()));
+        }
+    }
+}
+
+void MainWindow::mouseMoveEvent(QMouseEvent *event)
+{
+    if (currentLineItem != nullptr) {
+        // Обновление текущей линии при перемещении мыши
+        currentLineItem->setLine(QLineF(selectedItems.first()->pos(), mapToScene(event->pos())));
+    }
+}
+
+void MainWindow::mouseReleaseEvent(QMouseEvent *event)
+{
+    if (currentLineItem != nullptr) {
+        // Установка связи между выбранными элементами
+        QList<QGraphicsItem*> itemsUnderCursor = scene->items(mapToScene(event->pos()));
+        QGraphicsItem *secondItem = nullptr;
+        for (QGraphicsItem *item : itemsUnderCursor) {
+            if (item->isSelected()
+            {
+                secondItem = item;
+                break;
+            }
+        }
+
+        if (secondItem != nullptr && secondItem != selectedItems.first()) {
+            QHash<QGraphicsItem*, QList<QGraphicsItem*>>::iterator it = adjacencyList.find(selectedItems.first());
+            if (it != adjacencyList.end()) {
+                it.value().append(secondItem);
+            } else {
+                adjacencyList.insert(selectedItems.first(), QList<QGraphicsItem*>() << secondItem);
+            }
+            scene->addItem(currentLineItem);
+            currentLineItem = nullptr;
+        } else {
+            scene->removeItem(currentLineItem);
+        }
+
+        selectedItems.clear();
+    }
+}
+
+void MainWindow::onMatrixButtonClicked()
+{
+    // Создание матрицы связности на основе списка смежности
+    int n = scene->items().size();
+    int **adjMatrix = new int*[n];
+    for (int i = 0; i < n; i++) {
+        adjMatrix[i] = new int[n];
+        for (int j = 0; j < n; j++) {
+            adjMatrix[i][j] = 0;
+        }
+    }
+    for (QGraphicsItem *item : scene->items()) {
+        QHash<QGraphicsItem*, QList<QGraphicsItem*>>::const_iterator it = adjacencyList.constFind(item);
+        if (it != adjacencyList.constEnd()) {
+            int i = scene->items().indexOf(item);
+            for (QGraphicsItem *neighbour : it.value()) {
+                int j = scene->items().indexOf(neighbour);
+                adjMatrix[i][j] = 1;
+            }
+        }
+    }
+
+    // Вывод матрицы связности в консоль
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            qDebug() << adjMatrix[i][j];
+        }
+        qDebug() << endl;
+    }
+
+    // Очистка памяти
+    for (int i = 0; i < n; i++) {
+        delete[] adjMatrix[i];
+    }
+    delete[] adjMatrix;
+}
+
