@@ -27,16 +27,15 @@ private slots:
     void on_addRectButton_clicked();
     void on_addEllipseButton_clicked();
     void on_addArrowButton_clicked();
-    void updateArrowPositions(QGraphicsItem *movedItem);
 
 private:
     Ui::MainWindow *ui;
     QGraphicsScene *scene;
     QMap<int, QGraphicsItem*> items;
     QVector<QPair<int, int>> edges;
-    QVector<QGraphicsLineItem*> arrows;
 
     int getUniqueId();
+    void updateArrowsPosition(QGraphicsItem* item);
 };
 
 #endif // MAINWINDOW_H
@@ -61,7 +60,6 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     ui->graphicsView->setScene(scene);
-    connect(scene, SIGNAL(changed(QList<QRectF>)), this, SLOT(update()));
 }
 
 MainWindow::~MainWindow()
@@ -77,7 +75,7 @@ void MainWindow::on_addRectButton_clicked()
     int id = getUniqueId();
     items[id] = rect;
     scene->addItem(rect);
-    connect(rect, SIGNAL(moved()), this, SLOT(updateArrowPositions()));
+    connect(rect, &QGraphicsItem::posChanged, this, &MainWindow::updateArrowsPosition);
 }
 
 void MainWindow::on_addEllipseButton_clicked()
@@ -88,7 +86,7 @@ void MainWindow::on_addEllipseButton_clicked()
     int id = getUniqueId();
     items[id] = ellipse;
     scene->addItem(ellipse);
-    connect(ellipse, SIGNAL(moved()), this, SLOT(updateArrowPositions()));
+    connect(ellipse, &QGraphicsItem::posChanged, this, &MainWindow::updateArrowsPosition);
 }
 
 void MainWindow::on_addArrowButton_clicked()
@@ -105,26 +103,48 @@ void MainWindow::on_addArrowButton_clicked()
     int from = items.key(selected[0]);
     int to = items.key(selected[1]);
     edges.append(qMakePair(from, to));
-    scene->
-
-arrows.append(line);
-scene->addItem(line);
-
-}
-
-void MainWindow::updateArrowPositions(QGraphicsItem movedItem)
-{
-int itemId = items.key(movedItem);
-for (QGraphicsLineItem arrow : arrows) {
-QPointF fromPos = items[edges[arrows.indexOf(arrow)].first]->pos() + QPointF(50, 50);
-QPointF toPos = items[edges[arrows.indexOf(arrow)].second]->pos() + QPointF(50, 50);
-arrow->setLine(QLineF(fromPos, toPos));
-}
+    scene->addItem(line);
 }
 
 int MainWindow::getUniqueId()
 {
-return uniqueId++;
+    return uniqueId++;
 }
+
+void MainWindow::updateArrowsPosition(QGraphicsItem *item)
+{
+    int id = items.key(item);
+    QList<QGraphicsItem*> connectedItems = items.values(id);
+    foreach(QGraphicsItem* connectedItem, connectedItems) {
+        if (connectedItem->type() == QGraphicsLineItem::Type) {
+            QGraphicsLineItem* line = qgraphicsitem_cast<QGraphicsLineItem*>(connectedItem);
+            int from = edges[line->data(0).toInt()].first;
+            int to = edges[line->data(0).toInt()].second;
+            QPointF fromPos = items[from]->pos();
+            QPointF toPos = items[to]->pos();
+            line->setLine(QLineF(fromPos, toPos));
+        }
+    }
+}
+
+
+
+void MainWindow::on_createAdjacencyMatrixButton_clicked()
+{
+    int size = items.count();
+    QVector<QVector<int>> adjacencyMatrix(size, QVector<int>(size, 0));
+    for (auto edge : edges) {
+        adjacencyMatrix[edge.first][edge.second] = 1;
+    }
+    // Вывод матрицы связности в консоль
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            qDebug() << adjacencyMatrix[i][j] << " ";
+        }
+        qDebug() << endl;
+    }
+}
+
+
 
 
