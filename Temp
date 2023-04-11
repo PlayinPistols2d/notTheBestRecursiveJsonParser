@@ -1,179 +1,250 @@
-// mainwindow.h
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
+#ifndef MYWINDOW_H
+#define MYWINDOW_H
 
-#include <QMainWindow>
+#include <QWidget>
 #include <QGraphicsScene>
 #include <QGraphicsView>
-#include <QPointF>
-#include <QMap>
-#include <QVector>
+#include <QGraphicsItem>
+#include <QGraphicsItemGroup>
+#include <QGraphicsLineItem>
+#include <QMouseEvent>
 
-class QGraphicsItem;
-
-namespace Ui {
-class MainWindow;
-}
-
-class MainWindow : public QMainWindow
+class MyWindow : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget *parent = 0);
-    ~MainWindow();
-
-private slots:
-    void on_addRectButton_clicked();
-    void on_addEllipseButton_clicked();
-    void on_addArrowButton_clicked();
+    MyWindow(QWidget *parent = nullptr);
 
 private:
-    Ui::MainWindow *ui;
-    QGraphicsScene *scene;
-    QMap<int, QGraphicsItem*> items;
-    QVector<QPair<int, int>> edges;
+    QGraphicsScene *m_scene;
+    QGraphicsView *m_view;
+    QGraphicsItemGroup *m_selectedItems;
+    QList<QGraphicsItem*> m_items;
+    QList<QGraphicsLineItem*> m_lines;
+    QGraphicsLineItem *m_currentLine;
 
-    int getUniqueId();
-    void updateArrowsPosition(QGraphicsItem* item);
+    void mousePressEvent(QMouseEvent *event);
+    void mouseMoveEvent(QMouseEvent *event);
+    void mouseReleaseEvent(QMouseEvent *event);
+    void createLine(const QPointF &p1, const QPointF &p2);
+    void deleteLine(QGraphicsLineItem *line);
+    void updateLines();
+
+private slots:
+    void updateMatrix();
+
+signals:
+    void matrixUpdated(const QList<QList<bool> > &matrix);
 };
 
-#endif // MAINWINDOW_H
+#endif // MYWINDOW_H
 
 
 
 
-// mainwindow.cpp
-#include "mainwindow.h"
-#include "ui_mainwindow.h"
-#include <QGraphicsRectItem>
-#include <QGraphicsEllipseItem>
-#include <QGraphicsLineItem>
-#include <QMessageBox>
+#include "mywindow.h"
+#include <QGridLayout>
+#include <QPushButton>
+#include <QGroupBox>
+#include <QFormLayout>
+#include <QLineEdit>
+#include <QLabel>
 
-int uniqueId = 0;
-
-MainWindow::MainWindow(QWidget *parent) :
-    QMainWindow(parent),
-    ui(new Ui::MainWindow),
-    scene(new QGraphicsScene(this))
+MyWindow::MyWindow(QWidget *parent)
+    : QWidget(parent)
 {
-    ui->setupUi(this);
-    ui->graphicsView->setScene(scene);
+    m_scene = new QGraphicsScene(this);
+    m_view = new QGraphicsView(m_scene, this);
+    m_selectedItems = nullptr;
+    m_currentLine = nullptr;
+
+    QGroupBox *gb = new QGroupBox(tr("Create Node"));
+    QFormLayout *fl = new QFormLayout;
+    QLineEdit *nodeName = new QLineEdit;
+    QPushButton *addNodeButton = new QPushButton(tr("Add"));
+    fl->addRow(new QLabel(tr("Node Name:")), nodeName);
+    fl->addRow(addNodeButton);
+    gb->setLayout(fl);
+
+    connect(addNodeButton, &QPushButton::clicked, [this, nodeName]() {
+        QGraphicsEllipseItem *item = m_scene->addEllipse(-20, -20, 40, 40);
+        item->setFlag(QGraphicsItem::ItemIsMovable, true);
+        item->setFlag(QGraphicsItem::ItemIsSelectable, true);
+        item->setPos(QCursor::pos());
+        m_items.append(item);
+        updateLines();
+    });
+
+    QGridLayout *layout = new QGridLayout;
+    layout->addWidget(gb, 0, 0);
+    layout->addWidget(m_view, 0, 1);
+    setLayout(layout);
+
+    connect(this, &MyWindow::matrixUpdated, [](const QList<QList<bool> > &matrix) {
+        qDebug() << "Matrix Updated:" << matrix;
+    });
 }
 
-MainWindow::~MainWindow()
+void MyWindow::mousePressEvent(QMouseEvent *event)
 {
-    delete ui;
-}
-
-void MainWindow::on_addRectButton_clicked()
-{
-    QGraphicsRectItem *rect = new QGraphicsRectItem(0, 0, 100, 100);
-    rect->setPos(QPointF(50, 50));
-    rect->setFlags(QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIsMovable);
-    int id = getUniqueId();
-    items[id] = rect;
-    scene->addItem(rect);
-    connect(rect, &QGraphicsItem::posChanged, this, &MainWindow::updateArrowsPosition);
-}
-
-void MainWindow::on_addEllipseButton_clicked()
-{
-    QGraphicsEllipseItem *ellipse = new QGraphicsEllipseItem(0, 0, 100, 100);
-    ellipse->setPos(QPointF(50, 50));
-    ellipse->setFlags(QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIsMovable);
-    int id = getUniqueId();
-    items[id] = ellipse;
-    scene->addItem(ellipse);
-    connect(ellipse, &QGraphicsItem::posChanged, this, &MainWindow::updateArrowsPosition);
-}
-
-void MainWindow::on_addArrowButton_clicked()
-{
-    QList<QGraphicsItem*> selected = scene->selectedItems();
-    if (selected.count() != 2) {
-        QMessageBox::information(this, "Error", "Please select two items to create an arrow.");
-        return;
-    }
-    QGraphicsLineItem *line = new QGraphicsLineItem();
-    line->setPen(QPen(Qt::black, 2));
-    line->setPos(selected[0]->pos());
-    line->setLine(QLineF(selected[0]->pos(), selected[1]->pos()));
-    int from = items.key(selected[0]);
-    int to = items.key(selected[1]);
-    edges.append(qMakePair(from, to));
-    scene->addItem(line);
-}
-
-int MainWindow::getUniqueId()
-{
-    return uniqueId++;
-}
-
-void MainWindow::updateArrowsPosition(QGraphicsItem *item)
-{
-    int id = items.key(item);
-    QList<QGraphicsItem*> connectedItems = items.values(id);
-    foreach(QGraphicsItem* connectedItem, connectedItems) {
-        if (connectedItem->type() == QGraphicsLineItem::Type) {
-            QGraphicsLineItem* line = qgraphicsitem_cast<QGraphicsLineItem*>(connectedItem);
-            int from = edges[line->data(0).toInt()].first;
-            int to = edges[line->data(0).toInt()].second;
-            QPointF fromPos = items[from]->pos();
-            QPointF toPos = items[to]->pos();
-            line->setLine(QLineF(fromPos, toPos));
+    QGraphicsItem *item = m_scene->itemAt(event->pos(), QTransform());
+    if (item && item->isSelected()) {
+        m_selectedItems = m_scene->createItemGroup(m_scene->selectedItems());
+        for (QGraphicsItem *i : m_selectedItems->childItems()) {
+            i->setFlag(QGraphicsItem::ItemIsMovable, true);
         }
     }
+
+
+void MyWindow::mouseMoveEvent(QMouseEvent *event)
+{
+if (m_selectedItems) {
+for (QGraphicsItem *i : m_selectedItems->childItems()) {
+i->setPos(i->pos() + (event->pos() - event->lastPos()));
+}
+updateLines();
+} else if (m_currentLine) {
+m_currentLine->setLine(m_currentLine->line().p1(), event->pos());
+}
 }
 
-
-
-void MainWindow::on_createAdjacencyMatrixButton_clicked()
+void MyWindow::mouseReleaseEvent(QMouseEvent *event)
 {
-    int size = items.count();
-    QVector<QVector<int>> adjacencyMatrix(size, QVector<int>(size, 0));
-    for (auto edge : edges) {
-        adjacencyMatrix[edge.first][edge.second] = 1;
-    }
-    // Вывод матрицы связности в консоль
-    for (int i = 0; i < size; i++) {
-        for (int j = 0; j < size; j++) {
-            qDebug() << adjacencyMatrix[i][j] << " ";
+if (m_selectedItems) {
+m_scene->destroyItemGroup(m_selectedItems);
+m_selectedItems = nullptr;
+updateLines();
+} else if (m_currentLine) {
+QGraphicsItem *item = m_scene->itemAt(event->pos(), QTransform());
+if (item && item != m_currentLine->line().p1()) {
+createLine(m_currentLine->line().p1(), item->scenePos());
+}
+m_scene->removeItem(m_currentLine);
+delete m_currentLine;
+m_currentLine = nullptr;
+}
+}
+
+void MyWindow::createLine(const QPointF &p1, const QPointF &p2)
+{
+QGraphicsLineItem *line = new QGraphicsLineItem(QLineF(p1, p2));
+line->setPen(QPen(Qt::black, 2));
+m_lines.append(line);
+m_scene->addItem(line);
+updateMatrix();
+}
+
+void MyWindow::deleteLine(QGraphicsLineItem *line)
+{
+m_scene->removeItem(line);
+m_lines.removeAll(line);
+delete line;
+updateMatrix();
+}
+
+void MyWindow::updateLines()
+{
+for (QGraphicsLineItem *line : m_lines) {
+m_scene->removeItem(line);
+delete line;
+}
+m_lines.clear();
+
+
+
+for (int i = 0; i < m_items.size(); ++i) {
+    for (int j = 0; j < m_items.size(); ++j) {
+        if (i == j) {
+            continue;
         }
-        qDebug() << endl;
-    }
-}
 
+        QGraphicsItem *item1 = m_items.at(i);
+        QGraphicsItem *item2 = m_items.at(j);
 
-
-void MainWindow::mouseMoveEvent(QMouseEvent *event)
-{
-    if (selectedItem != nullptr) {
-        selectedItem->setPos(mapToScene(event->pos()));
-        updateArrowsPosition(selectedItem);
-    }
-}
-
-void MainWindow::mouseReleaseEvent(QMouseEvent *event)
-{
-    selectedItem = nullptr;
-}
-
-void MainWindow::updateArrowsPosition(QGraphicsItem *item)
-{
-    int id = items.key(item);
-    QList<QGraphicsItem*> connectedItems = items.values(id);
-    foreach(QGraphicsItem* connectedItem, connectedItems) {
-        if (connectedItem->type() == QGraphicsLineItem::Type) {
-            QGraphicsLineItem* line = qgraphicsitem_cast<QGraphicsLineItem*>(connectedItem);
-            int from = edges[line->data(0).toInt()].first;
-            int to = edges[line->data(0).toInt()].second;
-            QPointF fromPos = items[from]->pos() + QPointF(itemWidth/2, itemHeight/2);
-            QPointF toPos = items[to]->pos() + QPointF(itemWidth/2, itemHeight/2);
-            line->setLine(QLineF(fromPos, toPos));
+        if (!item1->isSelected() && !item2->isSelected()) {
+            continue;
         }
+
+        QPointF p1 = item1->scenePos();
+        QPointF p2 = item2->scenePos();
+
+        QGraphicsLineItem *line = new QGraphicsLineItem(QLineF(p1, p2));
+        line->setPen(QPen(Qt::black, 2));
+        m_lines.append(line);
+        m_scene->addItem(line);
     }
 }
+
+updateMatrix();
+
+
+}
+
+void MyWindow::updateMatrix()
+{
+QList<QList<bool> > matrix;
+for (int i = 0; i < m_items.size(); ++i) {
+matrix.append(QList<bool>());
+for (int j = 0; j < m_items.size(); ++j) {
+if (i == j) {
+matrix.last().append(false);
+continue;
+}
+
+
+        QGraphicsItem *item1 = m_items.at(i);
+        QGraphicsItem *item2 = m_items.at(j);
+
+        if (!item1->isSelected() && !item2->isSelected()) {
+            matrix.last().append(false);
+            continue;
+        }
+
+        bool connected = false;
+        for (QGraphicsLineItem *line : m_lines) {
+            if ((line->line().p1() == item1->scenePos() && line->line().p2() == item2->scenePos()) ||
+                (line->line().p1() == item2->scenePos() && line->line().p2() == item
+
+                item1->scenePos())) {
+                connected = true;
+                break;
+            }
+        }
+
+        matrix.last().append(connected);
+    }
+}
+
+// Output the matrix
+for (int i = 0; i < matrix.size(); ++i) {
+    for (int j = 0; j < matrix.at(i).size(); ++j) {
+        std::cout << matrix.at(i).at(j) << " ";
+    }
+    std::cout << std::endl;
+}
+}
+
+
+void MyWindow::clear()
+{
+for (QGraphicsItem *item : m_items) {
+m_scene->removeItem(item);
+delete item;
+}
+m_items.clear();
+
+
+
+for (QGraphicsLineItem *line : m_lines) {
+    m_scene->removeItem(line);
+    delete line;
+}
+m_lines.clear();
+
+m_selectedItems = nullptr;
+m_currentLine = nullptr;
+
+
 
 
