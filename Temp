@@ -1,90 +1,3 @@
-// mainwindow.h
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
-
-#include <QMainWindow>
-#include <QGraphicsScene>
-#include <QGraphicsView>
-#include <QPointF>
-#include <QMap>
-#include <QVector>
-
-class QGraphicsItem;
-
-namespace Ui {
-class MainWindow;
-}
-
-class MainWindow : public QMainWindow
-{
-    Q_OBJECT
-
-public:
-    explicit MainWindow(QWidget *parent = 0);
-    ~MainWindow();
-
-private slots:
-    void on_addRectButton_clicked();
-    void on_addEllipseButton_clicked();
-    void on_addArrowButton_clicked();
-
-private:
-    Ui::MainWindow *ui;
-    QGraphicsScene *scene;
-    QMap<int, QGraphicsItem*> items;
-    QVector<QPair<int, int>> edges;
-
-    int getUniqueId();
-};
-
-#endif // MAINWINDOW_H
-
-
-
-// mainwindow.cpp
-#include "mainwindow.h"
-#include "ui_mainwindow.h"
-#include <QGraphicsRectItem>
-#include <QGraphicsEllipseItem>
-#include <QGraphicsLineItem>
-#include <QMessageBox>
-
-int uniqueId = 0;
-
-MainWindow::MainWindow(QWidget *parent) :
-    QMainWindow(parent),
-    ui(new Ui::MainWindow),
-    scene(new QGraphicsScene(this))
-{
-    ui->setupUi(this);
-    ui->graphicsView->setScene(scene);
-}
-
-MainWindow::~MainWindow()
-{
-    delete ui;
-}
-
-void MainWindow::on_addRectButton_clicked()
-{
-    QGraphicsRectItem *rect = new QGraphicsRectItem(0, 0, 100, 100);
-    rect->setPos(QPointF(50, 50));
-    rect->setFlags(QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIsMovable);
-    int id = getUniqueId();
-    items[id] = rect;
-    scene->addItem(rect);
-}
-
-void MainWindow::on_addEllipseButton_clicked()
-{
-    QGraphicsEllipseItem *ellipse = new QGraphicsEllipseItem(0, 0, 100, 100);
-    ellipse->setPos(QPointF(50, 50));
-    ellipse->setFlags(QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIsMovable);
-    int id = getUniqueId();
-    items[id] = ellipse;
-    scene->addItem(ellipse);
-}
-
 void MainWindow::on_addArrowButton_clicked()
 {
     QList<QGraphicsItem*> selected = scene->selectedItems();
@@ -94,17 +7,11 @@ void MainWindow::on_addArrowButton_clicked()
     }
     QGraphicsLineItem *line = new QGraphicsLineItem();
     line->setPen(QPen(Qt::black, 2));
-    line->setPos(selected[0]->pos());
-    line->setLine(QLineF(selected[0]->pos(), selected[1]->pos()));
     int from = items.key(selected[0]);
     int to = items.key(selected[1]);
+    QPointF startPos = selected[0]->pos() + QPointF(selected[0]->boundingRect().width() / 2, selected[0]->boundingRect().height() / 2);
+    QPointF endPos = selected[1]->pos() + QPointF(selected[1]->boundingRect().width() / 2, selected[1]->boundingRect().height() / 2);
+    line->setLine(QLineF(startPos, endPos));
     edges.append(qMakePair(from, to));
     scene->addItem(line);
 }
-
-int MainWindow::getUniqueId()
-{
-    return ++uniqueId;
-}
-
-
