@@ -147,4 +147,33 @@ void MainWindow::on_createAdjacencyMatrixButton_clicked()
 
 
 
+void MainWindow::mouseMoveEvent(QMouseEvent *event)
+{
+    if (selectedItem != nullptr) {
+        selectedItem->setPos(mapToScene(event->pos()));
+        updateArrowsPosition(selectedItem);
+    }
+}
+
+void MainWindow::mouseReleaseEvent(QMouseEvent *event)
+{
+    selectedItem = nullptr;
+}
+
+void MainWindow::updateArrowsPosition(QGraphicsItem *item)
+{
+    int id = items.key(item);
+    QList<QGraphicsItem*> connectedItems = items.values(id);
+    foreach(QGraphicsItem* connectedItem, connectedItems) {
+        if (connectedItem->type() == QGraphicsLineItem::Type) {
+            QGraphicsLineItem* line = qgraphicsitem_cast<QGraphicsLineItem*>(connectedItem);
+            int from = edges[line->data(0).toInt()].first;
+            int to = edges[line->data(0).toInt()].second;
+            QPointF fromPos = items[from]->pos() + QPointF(itemWidth/2, itemHeight/2);
+            QPointF toPos = items[to]->pos() + QPointF(itemWidth/2, itemHeight/2);
+            line->setLine(QLineF(fromPos, toPos));
+        }
+    }
+}
+
 
