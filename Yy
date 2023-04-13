@@ -1,22 +1,18 @@
 QString text = "Hello, World!"; // заданный текст
 QFont font("Arial", 16); // шрифт для отображения текста
 
-QImage img(100, 100, QImage::Format_ARGB32); // создание QImage нужного размера
-img.fill(Qt::transparent); // заполнение QImage прозрачным фоном
+QTextDocument doc;
+doc.setDefaultFont(font);
+doc.setPlainText(text);
 
-QPainter painter(&img); // создание QPainter для рисования на QImage
-painter.setFont(font); // установка шрифта для QPainter
+QSizeF docSize = doc.size();
+QPixmap pixmap(docSize.toSize());
+pixmap.fill(Qt::transparent);
 
-// вычисление размеров текста и его расположение на QImage
-QRectF textRect = painter.boundingRect(img.rect(), Qt::AlignCenter, text);
-textRect.translate(0, img.height() / 2 - textRect.height() / 2);
+QPainter painter(&pixmap);
+painter.setRenderHint(QPainter::Antialiasing);
 
-// рисование текста на QImage
-painter.drawText(textRect, text);
+doc.drawContents(&painter);
 
-// создание QBrush на основе QImage без тайлинга
-QBrush brush(img, Qt::TexturePattern);
-
-// установка QBrush в качестве фона объекта QGraphicsItem (например, DiagramItem)
-DiagramItem* item = new DiagramItem();
-item->setBrush(brush);
+QBrush brush(pixmap);
+brush.setTransform(QTransform::fromScale(1.0 / docSize.width(), 1.0 / docSize.height()));
