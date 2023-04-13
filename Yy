@@ -1,62 +1,23 @@
-#ifndef MYPOLYGONITEM_H
-#define MYPOLYGONITEM_H
-
-#include <QGraphicsPolygonItem>
-#include <QGraphicsTextItem>
-
-class GraphicsLabelItem : public QGraphicsTextItem {
-public:
-    GraphicsLabelItem(QGraphicsItem* parent = nullptr);
-    QRectF boundingRect() const override;
-    void setText(const QString& text);
-private:
-    qreal m_width;
-    qreal m_height;
-};
-
-class MyPolygonItem : public QGraphicsPolygonItem {
-public:
-    MyPolygonItem(QGraphicsItem* parent = nullptr);
-    QRectF boundingRect() const override;
-    QPainterPath shape() const override;
-private:
-    GraphicsLabelItem* m_label;
-};
-
-#endif // MYPOLYGONITEM_H
-
-
-
-
-#include "MyPolygonItem.h"
-
-GraphicsLabelItem::GraphicsLabelItem(QGraphicsItem* parent) : QGraphicsTextItem(parent), m_width(0), m_height(0) {}
-
-QRectF GraphicsLabelItem::boundingRect() const {
-    return QRectF(-m_width/2, -m_height/2, m_width, m_height);
+QVariant MyPolygonItem::itemChange(QGraphicsItem::GraphicsItemChange change, const QVariant& value) {
+    if (change == ItemPositionChange && scene()) {
+        QPointF newPos = value.toPointF();
+        QRectF rect = scene()->sceneRect();
+        QPointF labelPos = m_label->pos();
+        rect.translate(-labelPos.x(), -labelPos.y());
+        if (!rect.contains(newPos)) {
+            newPos.setX(qMin(rect.right(), qMax(newPos.x(), rect.left())));
+            newPos.setY(qMin(rect.bottom(), qMax(newPos.y(), rect.top())));
+            m_label->setPos(newPos);
+        }
+    }
+    return QGraphicsPolygonItem::itemChange(change, value);
 }
 
-void GraphicsLabelItem::setText(const QString& text) {
-    QGraphicsTextItem::setPlainText(text);
-    QFontMetricsF fm(font());
-    m_width = fm.width(text);
-    m_height = fm.height();
-}
 
-MyPolygonItem::MyPolygonItem(QGraphicsItem* parent) : QGraphicsPolygonItem(parent) {
-    m_label = new GraphicsLabelItem(this);
-    m_label->setPos(0, 0);
-    m_label->setZValue(1);
-}
 
-QRectF MyPolygonItem::boundingRect() const {
-    QRectF rect = QGraphicsPolygonItem::boundingRect();
-    rect = rect.united(m_label->boundingRect());
-    return rect;
-}
 
 QPainterPath MyPolygonItem::shape() const {
     QPainterPath path = QGraphicsPolygonItem::shape();
-    path.addRect(m_label->boundingRect());
+    path.addRect(m_label->sceneBoundingRect());
     return path;
 }
