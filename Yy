@@ -1,0 +1,51 @@
+#ifndef POLYGONWITHTEXTITEM_H
+#define POLYGONWITHTEXTITEM_H
+
+#include <QObject>
+#include <QGraphicsPolygonItem>
+#include <QGraphicsTextItem>
+
+class PolygonWithTextItem : public QObject, public QGraphicsPolygonItem, public QGraphicsTextItem
+{
+    Q_OBJECT
+
+public:
+    PolygonWithTextItem(const QPolygonF& polygon, const QString& text, QGraphicsItem* parent = nullptr);
+
+private slots:
+    void updateTextPosition();
+};
+
+#endif // POLYGONWITHTEXTITEM_H
+
+
+
+
+
+
+#include "polygonwithtextitem.h"
+
+PolygonWithTextItem::PolygonWithTextItem(const QPolygonF& polygon, const QString& text, QGraphicsItem* parent)
+    : QObject()
+    , QGraphicsPolygonItem(polygon, parent)
+    , QGraphicsTextItem(text, this)
+{
+    // Настройка свойств текста
+    setFont(QFont("Arial", 16));
+    setDefaultTextColor(Qt::red);
+
+    // Установка положения текста
+    QRectF boundingRect = polygon.boundingRect();
+    QPointF textPos = boundingRect.center() - QPointF(boundingRect.width()/2, boundingRect.height()/2);
+    setPos(textPos);
+
+    // Соединение сигнала об изменении положения с лямбда-функцией для обновления положения текста
+    connect(this, &QGraphicsItem::posChanged, this, &PolygonWithTextItem::updateTextPosition);
+}
+
+void PolygonWithTextItem::updateTextPosition()
+{
+    QRectF boundingRect = polygon().boundingRect();
+    QPointF textPos = boundingRect.center() - QPointF(boundingRect.width()/2, boundingRect.height()/2);
+    setPos(textPos);
+}
