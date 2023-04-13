@@ -1,44 +1,62 @@
-#include <QApplication>
-#include <QGraphicsScene>
-#include <QGraphicsView>
+#ifndef MYPOLYGONITEM_H
+#define MYPOLYGONITEM_H
+
+#include <QGraphicsPolygonItem>
 #include <QGraphicsTextItem>
-#include <QPolygonF>
 
-int main(int argc, char *argv[])
-{
-    QApplication a(argc, argv);
+class GraphicsLabelItem : public QGraphicsTextItem {
+public:
+    GraphicsLabelItem(QGraphicsItem* parent = nullptr);
+    QRectF boundingRect() const override;
+    void setText(const QString& text);
+private:
+    qreal m_width;
+    qreal m_height;
+};
 
-    // Создаем объект QGraphicsScene
-    QGraphicsScene scene;
+class MyPolygonItem : public QGraphicsPolygonItem {
+public:
+    MyPolygonItem(QGraphicsItem* parent = nullptr);
+    QRectF boundingRect() const override;
+    QPainterPath shape() const override;
+private:
+    GraphicsLabelItem* m_label;
+};
 
-    // Создаем Polygon
-    QPolygonF polygon;
-    polygon << QPointF(0, 0) << QPointF(100, 0) << QPointF(100, 100) << QPointF(0, 100);
+#endif // MYPOLYGONITEM_H
 
-    // Создаем QGraphicsPolygonItem
-    QGraphicsPolygonItem *polygonItem = new QGraphicsPolygonItem(polygon);
 
-    // Создаем QGraphicsTextItem
-    QGraphicsTextItem *textItem = new QGraphicsTextItem("Текст на полигоне");
-    textItem->setDefaultTextColor(Qt::white);
 
-    // Создаем QGraphicsItemGroup
-    QGraphicsItemGroup *group = new QGraphicsItemGroup();
-    group->addToGroup(polygonItem);
-    group->addToGroup(textItem);
 
-    // Устанавливаем позицию текста относительно Polygon
-    QRectF rect = polygonItem->boundingRect();
-    QPointF center = rect.center();
-    QPointF textPos(center.x() - textItem->boundingRect().width()/2, center.y() - textItem->boundingRect().height()/2);
-    textItem->setPos(textPos);
+#include "MyPolygonItem.h"
 
-    // Добавляем QGraphicsItemGroup в QGraphicsScene
-    scene.addItem(group);
+GraphicsLabelItem::GraphicsLabelItem(QGraphicsItem* parent) : QGraphicsTextItem(parent), m_width(0), m_height(0) {}
 
-    // Создаем QGraphicsView и устанавливаем в него QGraphicsScene
-    QGraphicsView view(&scene);
-    view.show();
+QRectF GraphicsLabelItem::boundingRect() const {
+    return QRectF(-m_width/2, -m_height/2, m_width, m_height);
+}
 
-    return a.exec();
+void GraphicsLabelItem::setText(const QString& text) {
+    QGraphicsTextItem::setPlainText(text);
+    QFontMetricsF fm(font());
+    m_width = fm.width(text);
+    m_height = fm.height();
+}
+
+MyPolygonItem::MyPolygonItem(QGraphicsItem* parent) : QGraphicsPolygonItem(parent) {
+    m_label = new GraphicsLabelItem(this);
+    m_label->setPos(0, 0);
+    m_label->setZValue(1);
+}
+
+QRectF MyPolygonItem::boundingRect() const {
+    QRectF rect = QGraphicsPolygonItem::boundingRect();
+    rect = rect.united(m_label->boundingRect());
+    return rect;
+}
+
+QPainterPath MyPolygonItem::shape() const {
+    QPainterPath path = QGraphicsPolygonItem::shape();
+    path.addRect(m_label->boundingRect());
+    return path;
 }
