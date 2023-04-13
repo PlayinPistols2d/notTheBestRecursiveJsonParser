@@ -1,23 +1,23 @@
-QVariant MyPolygonItem::itemChange(QGraphicsItem::GraphicsItemChange change, const QVariant& value) {
-    if (change == ItemPositionChange && scene()) {
-        QPointF newPos = value.toPointF();
-        QRectF rect = scene()->sceneRect();
-        QPointF labelPos = m_label->pos();
-        rect.translate(-labelPos.x(), -labelPos.y());
-        if (!rect.contains(newPos)) {
-            newPos.setX(qMin(rect.right(), qMax(newPos.x(), rect.left())));
-            newPos.setY(qMin(rect.bottom(), qMax(newPos.y(), rect.top())));
-            m_label->setPos(newPos);
-        }
-    }
-    return QGraphicsPolygonItem::itemChange(change, value);
-}
+QString text = "Hello, World!"; // заданный текст
+QFont font("Arial", 16); // шрифт для отображения текста
 
+QPixmap pixmap(100, 100); // создание QPixmap нужного размера
+pixmap.fill(Qt::transparent); // заполнение QPixmap прозрачным фоном
 
+QPainter painter(&pixmap); // создание QPainter для рисования на QPixmap
+painter.setFont(font); // установка шрифта для QPainter
+painter.drawText(pixmap.rect(), Qt::AlignCenter, text); // рисование текста на QPixmap
 
+// сохранение QPixmap в памяти в виде QByteArray
+QByteArray bytes;
+QBuffer buffer(&bytes);
+buffer.open(QIODevice::WriteOnly);
+pixmap.save(&buffer, "PNG");
 
-QPainterPath MyPolygonItem::shape() const {
-    QPainterPath path = QGraphicsPolygonItem::shape();
-    path.addRect(m_label->sceneBoundingRect());
-    return path;
-}
+// создание QPixmap из сохраненных данных
+QPixmap restoredPixmap;
+restoredPixmap.loadFromData(bytes);
+
+// установка QPixmap в качестве фона объекта QGraphicsItem (например, DiagramItem)
+DiagramItem* item = new DiagramItem();
+item->setPixmap(restoredPixmap);
