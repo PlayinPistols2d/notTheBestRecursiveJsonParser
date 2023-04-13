@@ -1,23 +1,19 @@
-QString text = "Hello, World!"; // заданный текст
-QFont font("Arial", 16); // шрифт для отображения текста
+QVector<QVector<int» convertToAdjacencyMatrix(QList<QList<QString» adjacencyList, QList<QString> nodes)
+{
+    int n = nodes.size();
+    QVector<QVector<int» adjacencyMatrix(n, QVector<int>(n, 0));
 
-QPixmap pixmap(100, 100); // создание QPixmap нужного размера
-pixmap.fill(Qt::transparent); // заполнение QPixmap прозрачным фоном
+    for (int i = 0; i < adjacencyList.size(); i++) {
+        QString node1 = adjacencyList[i][0];
+        int index1 = nodes.indexOf(node1);
 
-QPainter painter(&pixmap); // создание QPainter для рисования на QPixmap
-painter.setFont(font); // установка шрифта для QPainter
-painter.drawText(pixmap.rect(), Qt::AlignCenter, text); // рисование текста на QPixmap
+        for (int j = 1; j < adjacencyList[i].size(); j++) {
+            QString node2 = adjacencyList[i][j];
+            int index2 = nodes.indexOf(node2);
 
-// сохранение QPixmap в памяти в виде QByteArray
-QByteArray bytes;
-QBuffer buffer(&bytes);
-buffer.open(QIODevice::WriteOnly);
-pixmap.save(&buffer, "PNG");
+            adjacencyMatrix[index1][index2] = 1;
+        }
+    }
 
-// создание QPixmap из сохраненных данных
-QPixmap restoredPixmap;
-restoredPixmap.loadFromData(bytes);
-
-// установка QPixmap в качестве фона объекта QGraphicsItem (например, DiagramItem)
-DiagramItem* item = new DiagramItem();
-item->setPixmap(restoredPixmap);
+    return adjacencyMatrix;
+}
