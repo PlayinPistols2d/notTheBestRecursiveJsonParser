@@ -1,19 +1,21 @@
-QVector<QVector<int» convertToAdjacencyMatrix(QList<QList<QString» adjacencyList, QList<QString> nodes)
-{
-    int n = nodes.size();
-    QVector<QVector<int» adjacencyMatrix(n, QVector<int>(n, 0));
+QString text = "Hello, World!"; // заданный текст
+QFont font("Arial", 16); // шрифт для отображения текста
 
-    for (int i = 0; i < adjacencyList.size(); i++) {
-        QString node1 = adjacencyList[i][0];
-        int index1 = nodes.indexOf(node1);
+// создание QImage нужного размера и установка цвета фона
+QImage image(QSize(100, 100), QImage::Format_ARGB32);
+image.fill(Qt::white);
 
-        for (int j = 1; j < adjacencyList[i].size(); j++) {
-            QString node2 = adjacencyList[i][j];
-            int index2 = nodes.indexOf(node2);
+// создание QPainter для рисования на QImage
+QPainter painter(&image);
+painter.setFont(font); // установка шрифта для QPainter
 
-            adjacencyMatrix[index1][index2] = 1;
-        }
-    }
+// рисование текста на QImage
+QRect textRect = painter.boundingRect(image.rect(), Qt::AlignCenter, text);
+painter.drawText(textRect, text);
 
-    return adjacencyMatrix;
-}
+// создание QPixmap из QImage
+QPixmap pixmap = QPixmap::fromImage(image);
+
+// установка QPixmap в качестве фона объекта QGraphicsItem (например, DiagramItem)
+DiagramItem* item = new DiagramItem();
+item->setPixmap(pixmap);
