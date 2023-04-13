@@ -1,51 +1,44 @@
-#ifndef POLYGONWITHTEXTITEM_H
-#define POLYGONWITHTEXTITEM_H
-
-#include <QObject>
-#include <QGraphicsPolygonItem>
+#include <QApplication>
+#include <QGraphicsScene>
+#include <QGraphicsView>
 #include <QGraphicsTextItem>
+#include <QPolygonF>
 
-class PolygonWithTextItem : public QObject, public QGraphicsPolygonItem, public QGraphicsTextItem
+int main(int argc, char *argv[])
 {
-    Q_OBJECT
+    QApplication a(argc, argv);
 
-public:
-    PolygonWithTextItem(const QPolygonF& polygon, const QString& text, QGraphicsItem* parent = nullptr);
+    // Создаем объект QGraphicsScene
+    QGraphicsScene scene;
 
-private slots:
-    void updateTextPosition();
-};
+    // Создаем Polygon
+    QPolygonF polygon;
+    polygon << QPointF(0, 0) << QPointF(100, 0) << QPointF(100, 100) << QPointF(0, 100);
 
-#endif // POLYGONWITHTEXTITEM_H
+    // Создаем QGraphicsPolygonItem
+    QGraphicsPolygonItem *polygonItem = new QGraphicsPolygonItem(polygon);
 
+    // Создаем QGraphicsTextItem
+    QGraphicsTextItem *textItem = new QGraphicsTextItem("Текст на полигоне");
+    textItem->setDefaultTextColor(Qt::white);
 
+    // Создаем QGraphicsItemGroup
+    QGraphicsItemGroup *group = new QGraphicsItemGroup();
+    group->addToGroup(polygonItem);
+    group->addToGroup(textItem);
 
+    // Устанавливаем позицию текста относительно Polygon
+    QRectF rect = polygonItem->boundingRect();
+    QPointF center = rect.center();
+    QPointF textPos(center.x() - textItem->boundingRect().width()/2, center.y() - textItem->boundingRect().height()/2);
+    textItem->setPos(textPos);
 
+    // Добавляем QGraphicsItemGroup в QGraphicsScene
+    scene.addItem(group);
 
+    // Создаем QGraphicsView и устанавливаем в него QGraphicsScene
+    QGraphicsView view(&scene);
+    view.show();
 
-#include "polygonwithtextitem.h"
-
-PolygonWithTextItem::PolygonWithTextItem(const QPolygonF& polygon, const QString& text, QGraphicsItem* parent)
-    : QObject()
-    , QGraphicsPolygonItem(polygon, parent)
-    , QGraphicsTextItem(text, this)
-{
-    // Настройка свойств текста
-    setFont(QFont("Arial", 16));
-    setDefaultTextColor(Qt::red);
-
-    // Установка положения текста
-    QRectF boundingRect = polygon.boundingRect();
-    QPointF textPos = boundingRect.center() - QPointF(boundingRect.width()/2, boundingRect.height()/2);
-    setPos(textPos);
-
-    // Соединение сигнала об изменении положения с лямбда-функцией для обновления положения текста
-    connect(this, &QGraphicsItem::posChanged, this, &PolygonWithTextItem::updateTextPosition);
-}
-
-void PolygonWithTextItem::updateTextPosition()
-{
-    QRectF boundingRect = polygon().boundingRect();
-    QPointF textPos = boundingRect.center() - QPointF(boundingRect.width()/2, boundingRect.height()/2);
-    setPos(textPos);
+    return a.exec();
 }
