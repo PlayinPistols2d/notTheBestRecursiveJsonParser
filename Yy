@@ -1,40 +1,24 @@
+QAxObject* word = new QAxObject("Word.Application");
+QAxObject* documents = word->querySubObject("Documents");
+QAxObject* document = documents->querySubObject("Open(QString)", filename);
 
-#include <QAxObject>
-#include <QDebug>
+QAxObject* paragraphs = document->querySubObject("Content")->querySubObject("Paragraphs");
+int paragraphCount = paragraphs->dynamicCall("Count()").toInt();
 
-int main(int argc, char *argv[])
-{
-    QAxObject word("Word.Application");
-    word.setProperty("Visible", false);
-    QAxObject documents = word.querySubObject("Documents");
-    QAxObject document = documents.querySubObject("Open(const QString&)", "C:/path/to/file.doc");
-
-    QAxObject tables = document.querySubObject("Tables");
-    int tableCount = tables.property("Count").toInt();
-    qDebug() << "Table count: " << tableCount;
-
-    for (int i = 1; i <= tableCount; i++)
-    {
-        QAxObject table = tables.querySubObject("Item(int)", i);
-        int rowCount = table.querySubObject("Rows")->property("Count").toInt();
-        int colCount = table.querySubObject("Columns")->property("Count").toInt();
-        qDebug() << "Table #" << i << ", Rows: " << rowCount << ", Cols: " << colCount;
-
-        for (int j = 1; j <= rowCount; j++)
-        {
-            QString rowStr;
-            for (int k = 1; k <= colCount; k++)
-            {
-                QAxObject cell = table.querySubObject("Cell(int,int)", j, k);
-                QString cellStr = cell.property("Range").dynamicCall("Text").toString();
-                rowStr += cellStr.trimmed() + "\t";
+for (int i = 1; i <= paragraphCount; ++i) {
+    QAxObject* paragraph = paragraphs->querySubObject("Item(int)", i);
+    QString text = paragraph->dynamicCall("Range.Text").toString().trimmed();
+    int tableCount = paragraph->querySubObject("Tables")->dynamicCall("Count()").toInt();
+    for (int j = 1; j <= tableCount; ++j) {
+        QAxObject* table = paragraph->querySubObject("Tables")->querySubObject("Item(int)", j);
+        int rowCount = table->querySubObject("Rows")->dynamicCall("Count()").toInt();
+        int columnCount = table->querySubObject("Columns")->dynamicCall("Count()").toInt();
+        for (int k = 1; k <= rowCount; ++k) {
+            for (int l = 1; l <= columnCount; ++l) {
+                QAxObject* cell = table->querySubObject("Cell(int,int)", k, l);
+                QString cellText = cell->dynamicCall("Range.Text").toString().trimmed();
+                // использовать cellText в соответствии с задачей
             }
-            qDebug() << rowStr;
         }
     }
-
-    document.dynamicCall("Close()");
-    word.dynamicCall("Quit()");
-
-    return 0;
 }
