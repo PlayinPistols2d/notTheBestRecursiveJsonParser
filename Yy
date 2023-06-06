@@ -1,18 +1,40 @@
-QString text = "Hello, World!"; // заданный текст
-QFont font("Arial", 16); // шрифт для отображения текста
 
-QTextDocument doc;
-doc.setDefaultFont(font);
-doc.setPlainText(text);
+#include <QAxObject>
+#include <QDebug>
 
-QSizeF docSize = doc.size();
-QPixmap pixmap(docSize.toSize());
-pixmap.fill(Qt::transparent);
+int main(int argc, char *argv[])
+{
+    QAxObject word("Word.Application");
+    word.setProperty("Visible", false);
+    QAxObject documents = word.querySubObject("Documents");
+    QAxObject document = documents.querySubObject("Open(const QString&)", "C:/path/to/file.doc");
 
-QPainter painter(&pixmap);
-painter.setRenderHint(QPainter::Antialiasing);
+    QAxObject tables = document.querySubObject("Tables");
+    int tableCount = tables.property("Count").toInt();
+    qDebug() << "Table count: " << tableCount;
 
-doc.drawContents(&painter);
+    for (int i = 1; i <= tableCount; i++)
+    {
+        QAxObject table = tables.querySubObject("Item(int)", i);
+        int rowCount = table.querySubObject("Rows")->property("Count").toInt();
+        int colCount = table.querySubObject("Columns")->property("Count").toInt();
+        qDebug() << "Table #" << i << ", Rows: " << rowCount << ", Cols: " << colCount;
 
-QBrush brush(pixmap);
-brush.setTransform(QTransform::fromScale(1.0 / docSize.width(), 1.0 / docSize.height()));
+        for (int j = 1; j <= rowCount; j++)
+        {
+            QString rowStr;
+            for (int k = 1; k <= colCount; k++)
+            {
+                QAxObject cell = table.querySubObject("Cell(int,int)", j, k);
+                QString cellStr = cell.property("Range").dynamicCall("Text").toString();
+                rowStr += cellStr.trimmed() + "\t";
+            }
+            qDebug() << rowStr;
+        }
+    }
+
+    document.dynamicCall("Close()");
+    word.dynamicCall("Quit()");
+
+    return 0;
+}
