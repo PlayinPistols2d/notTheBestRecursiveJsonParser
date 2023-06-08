@@ -50,7 +50,16 @@ long double RPNEvaluator::evaluateRPN(std::vector<std::string>& rpn)
         //If numerical value, push onto the stack
         else if (RPN::isNumericalToken(token[0]))
         {
-            opStack.push(stold(token));
+            // Check if the token starts with "-" and has more than one character
+            if (token[0] == '-' && token.size() > 1)
+            {
+                // Convert the substring without the "-" sign to a negative number
+                opStack.push(-stold(token.substr(1)));
+            }
+            else
+            {
+                opStack.push(stold(token));
+            }
         }
     }
 
