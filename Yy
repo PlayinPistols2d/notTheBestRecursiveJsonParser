@@ -36,3 +36,72 @@ int main()
     qDebug() << "Result: " << result;
     return 0;
 }
+
+
+
+
+
+
+#include <stack>
+#include <string>
+#include <sstream>
+
+bool isOperator(const char& c) {
+    return (c == '+' || c == '-' || c == '*' || c == '/');
+}
+
+int precedence(const char& c) {
+    if (c == '+' || c == '-') {
+        return 1;
+    }
+    else if (c == '*' || c == '/') {
+        return 2;
+    }
+    return 0;
+}
+
+std::string infixToRPN(const std::string& infix) {
+    std::stringstream ss(infix);
+    std::stack<char> operators;
+    std::string rpn = "";
+
+    char c;
+    while (ss >> c) {
+        if (isdigit(c)) {
+            rpn += c;
+            while (ss >> c && isdigit(c)) {
+                rpn += c;
+            }
+            rpn += " ";
+        }
+        if (isOperator(c)) {
+            while (!operators.empty() && isOperator(operators.top()) && precedence(c) <= precedence(operators.top())) {
+                rpn += operators.top();
+                rpn += " ";
+                operators.pop();
+            }
+            operators.push(c);
+        }
+        if (c == '(') {
+            operators.push(c);
+        }
+        if (c == ')') {
+            while (!operators.empty() && operators.top() != '(') {
+                rpn += operators.top();
+                rpn += " ";
+                operators.pop();
+            }
+            operators.pop();
+        }
+    }
+    while (!operators.empty()) {
+        rpn += operators.top();
+        rpn += " ";
+        operators.pop();
+    }
+    return rpn;
+}
+
+
+
+
