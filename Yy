@@ -1,107 +1,72 @@
-#include <QString>
-#include <QStack>
-
-double calc(const QString& expr)
+std::vector<std::string> RPN::parseString(const std::string& exp)
 {
-    QStack<double> stack;
-    QStringList tokens = expr.split(' ');
-    foreach (const QString& token, tokens) {
-        if (token == "+") {
-            double op2 = stack.pop();
-            double op1 = stack.pop();
-            stack.push(op1 + op2);
-        } else if (token == "-") {
-            double op2 = stack.pop();
-            double op1 = stack.pop();
-            stack.push(op1 - op2);
-        } else if (token == "*") {
-            double op2 = stack.pop();
-            double op1 = stack.pop();
-            stack.push(op1 * op2);
-        } else if (token == "/") {
-            double op2 = stack.pop();
-            double op1 = stack.pop();
-            stack.push(op1 / op2);
-        } else {
-            double number = token.toDouble();
-            stack.push(number);
-        }
-    }
-    return stack.pop();
-}
+    std::string output = "";
+    std::stack<std::string> opStack;
+    opStack.push(" ");
 
-int main()
-{
-    double result = calc("53 26 2 - * 2 /");
-    qDebug() << "Result: " << result;
-    return 0;
-}
+    int i = 0;
+    while (i < exp.length())
+    {
+        // Found a numerical value
+        if (isNumericalToken(exp.at(i)))
+        {
+            int offset = 1;
+            std::string token = std::string(1, exp.at(i));
 
-
-
-
-
-
-#include <stack>
-#include <string>
-#include <sstream>
-
-bool isOperator(const char& c) {
-    return (c == '+' || c == '-' || c == '*' || c == '/');
-}
-
-int precedence(const char& c) {
-    if (c == '+' || c == '-') {
-        return 1;
-    }
-    else if (c == '*' || c == '/') {
-        return 2;
-    }
-    return 0;
-}
-
-std::string infixToRPN(const std::string& infix) {
-    std::stringstream ss(infix);
-    std::stack<char> operators;
-    std::string rpn = "";
-
-    char c;
-    while (ss >> c) {
-        if (isdigit(c)) {
-            rpn += c;
-            while (ss >> c && isdigit(c)) {
-                rpn += c;
+            while (i + offset < exp.size() && isNumericalToken(exp.at(i + offset)))
+            {
+                token += exp.at(i + offset);
+                offset++;
             }
-            rpn += " ";
+
+            output += token;
+            output += " ";
+            i += offset;
+            continue;
         }
-        if (isOperator(c)) {
-            while (!operators.empty() && isOperator(operators.top()) && precedence(c) <= precedence(operators.top())) {
-                rpn += operators.top();
-                rpn += " ";
-                operators.pop();
+        // Found a function
+        else if (isAlphaToken(exp.at(i)))
+        {
+            int offset = 1;
+            std::string token = std::string(1, exp.at(i));
+
+            while (i + offset < exp.size() && isAlphaToken(exp.at(i + offset)))
+            {
+                token += exp.at(i + offset);
+                offset++;
             }
-            operators.push(c);
+
+            opStack.push(token);
+            i += offset;
+            continue;
         }
-        if (c == '(') {
-            operators.push(c);
-        }
-        if (c == ')') {
-            while (!operators.empty() && operators.top() != '(') {
-                rpn += operators.top();
-                rpn += " ";
-                operators.pop();
+        // Found an operator
+        else if (isOperator(exp.at(i)))
+        {
+            // Check if the operator is a subtraction and if the previous token was an operator or left parenthesis
+            if (exp.at(i) == '-' && (i == 0 || isOperator(exp.at(i - 1)) || exp.at(i - 1) == '('))
+            {
+                // Handle the negative sign as a separate token
+                output += "-1 * ";
+                i++;
+                continue;
             }
-            operators.pop();
+
+            while (((isFunction(opStack.top())) ||
+                    (deltaPriority(exp.at(i), opStack.top()) < 0) ||
+                    ((deltaPriority(exp.at(i), opStack.top()) == 0) && (exp.at(i) != '^'))) &&
+                   (opStack.top() != "("))
+            {
+                output += opStack.top();
+                output += " ";
+                opStack.pop();
+            }
+
+            opStack.push(std::string(1, exp.at(i)));
         }
-    }
-    while (!operators.empty()) {
-        rpn += operators.top();
-        rpn += " ";
-        operators.pop();
-    }
-    return rpn;
-}
-
-
-
-
+        // Left bracket
+        else if (exp.at(i) == '(')
+        {
+            opStack.push(std::string(1, exp.at(i)));
+        }
+        // Right
