@@ -1,7 +1,6 @@
 long double RPNEvaluator::evaluateRPN(std::vector<std::string>& rpn)
 {
     std::stack<long double> opStack;
-    opStack.push(0.0);
 
     for (std::string token : rpn)
     {
