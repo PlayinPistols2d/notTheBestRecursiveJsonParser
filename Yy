@@ -94,7 +94,7 @@ std::vector<std::string> RPN::parseString(const std::string& exp)
         i++;
     }
 
-    // When there are is no more infix input, empty the stack onto the output
+    // When there is no more infix input, empty the stack onto the output
     while (!opStack.empty())
     {
         output += opStack.top();
@@ -102,4 +102,10 @@ std::vector<std::string> RPN::parseString(const std::string& exp)
         opStack.pop();
     }
 
-    std::
+    std::istringstream buf(output);
+    std::istream_iterator<std::string> beg(buf), end;
+
+    std::vector<std::string> outputTokens(beg, end);
+
+    return outputTokens;
+}
