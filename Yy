@@ -1,75 +1,45 @@
-long double RPNEvaluator::evaluateRPN(std::vector<std::string>& rpn)
+std::vector<std::string> RPN::parseString(const std::string& exp)
 {
-    std::stack<long double> opStack;
+	std::string output = "";
+	std::stack<std::string> opStack;
+	opStack.push(" ");
 
-    for (std::string token : rpn)
-    {
-        //Found operator
-        if (RPN::isOperator(token[0]))
-        {
-            //Retrieve previous two operands
-            if (opStack.size() < 2) {
-                // Not enough operands in the stack
-                // Handle the error appropriately
-                // For now, return 0.0
-                return 0.0;
-            }
-            long double operand2 = opStack.top();
-            opStack.pop();
+	int i = 0;
+	while (i < exp.length())
+	{
+		// ...
 
-            long double operand1 = opStack.top();
-            opStack.pop();
+		//Found an operator
+		else if (isOperator(exp.at(i)))
+		{
+			// Check if the operator is a negative sign and handle it accordingly
+			if (exp.at(i) == '-' && (i == 0 || isOperator(exp.at(i - 1)) || exp.at(i - 1) == '('))
+			{
+				// Negate the following number
+				output += "-1 ";
+				opStack.push("*");
+			}
+			else
+			{
+				while (((isFunction(opStack.top())) ||
+					    (deltaPriority(exp.at(i), opStack.top()) < 0)  ||
+					    ((deltaPriority(exp.at(i), opStack.top()) == 0) && (exp.at(i) != '^'))) &&
+					    (opStack.top() != "("))
+				{
+					output += opStack.top();
+					output += " ";
+					opStack.pop();
+				}
 
-            //Perform relevant operation
-            switch (token[0])
-            {
-                case '^': opStack.push(pow(operand1, operand2));  break;
-                case '/': opStack.push(operand1 / operand2); break;
-                case '*': opStack.push(operand1 * operand2); break;
-                case '+': opStack.push(operand1 + operand2); break;
-                case '-': opStack.push(operand1 - operand2); break;
-            }
-        }
-        //Found function name
-        else if (RPN::isFunction(token))
-        {
-            std::map<std::string, int> functionMap;
-            // Function mappings...
+				opStack.push(std::string(1, exp.at(i)));
+			}
+		}
 
-            //Determine which function to perform; most take one operand, but some take 0 or 2 operands
-            switch (functionMap[token])
-            {
-                // Cases...
+		// ...
+		i++;
+	}
 
-                default:
-                    // Handle unknown function
-                    // For now, return 0.0
-                    return 0.0;
-            }
-        }
-        //If numerical value, push onto the stack
-        else if (RPN::isNumericalToken(token[0]))
-        {
-            // Check if the token starts with "-" and has more than one character
-            if (token[0] == '-' && token.size() > 1)
-            {
-                // Convert the substring without the "-" sign to a negative number
-                opStack.push(-stold(token.substr(1)));
-            }
-            else
-            {
-                opStack.push(stold(token));
-            }
-        }
-    }
+	// ...
 
-    // Check if there is exactly one value left on the stack after evaluation
-    if (opStack.size() != 1) {
-        // Handle the error appropriately
-        // For now, return 0.0
-        return 0.0;
-    }
-
-    //Retrieve the top element of the stack, which should represent the final simplified value
-    return opStack.top();
+	return outputTokens;
 }
