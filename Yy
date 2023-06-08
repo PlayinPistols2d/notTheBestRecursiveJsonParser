@@ -1,24 +1,38 @@
-QAxObject* word = new QAxObject("Word.Application");
-QAxObject* documents = word->querySubObject("Documents");
-QAxObject* document = documents->querySubObject("Open(QString)", filename);
+#include <QString>
+#include <QStack>
 
-QAxObject* paragraphs = document->querySubObject("Content")->querySubObject("Paragraphs");
-int paragraphCount = paragraphs->dynamicCall("Count()").toInt();
-
-for (int i = 1; i <= paragraphCount; ++i) {
-    QAxObject* paragraph = paragraphs->querySubObject("Item(int)", i);
-    QString text = paragraph->dynamicCall("Range.Text").toString().trimmed();
-    int tableCount = paragraph->querySubObject("Tables")->dynamicCall("Count()").toInt();
-    for (int j = 1; j <= tableCount; ++j) {
-        QAxObject* table = paragraph->querySubObject("Tables")->querySubObject("Item(int)", j);
-        int rowCount = table->querySubObject("Rows")->dynamicCall("Count()").toInt();
-        int columnCount = table->querySubObject("Columns")->dynamicCall("Count()").toInt();
-        for (int k = 1; k <= rowCount; ++k) {
-            for (int l = 1; l <= columnCount; ++l) {
-                QAxObject* cell = table->querySubObject("Cell(int,int)", k, l);
-                QString cellText = cell->dynamicCall("Range.Text").toString().trimmed();
-                // использовать cellText в соответствии с задачей
-            }
+double calc(const QString& expr)
+{
+    QStack<double> stack;
+    QStringList tokens = expr.split(' ');
+    foreach (const QString& token, tokens) {
+        if (token == "+") {
+            double op2 = stack.pop();
+            double op1 = stack.pop();
+            stack.push(op1 + op2);
+        } else if (token == "-") {
+            double op2 = stack.pop();
+            double op1 = stack.pop();
+            stack.push(op1 - op2);
+        } else if (token == "*") {
+            double op2 = stack.pop();
+            double op1 = stack.pop();
+            stack.push(op1 * op2);
+        } else if (token == "/") {
+            double op2 = stack.pop();
+            double op1 = stack.pop();
+            stack.push(op1 / op2);
+        } else {
+            double number = token.toDouble();
+            stack.push(number);
         }
     }
+    return stack.pop();
+}
+
+int main()
+{
+    double result = calc("53 26 2 - * 2 /");
+    qDebug() << "Result: " << result;
+    return 0;
 }
