@@ -46,9 +46,19 @@ std::vector<std::string> RPN::parseString(const std::string& exp)
             // Check if the operator is a subtraction and if the previous token was an operator or left parenthesis
             if (exp.at(i) == '-' && (i == 0 || isOperator(exp.at(i - 1)) || exp.at(i - 1) == '('))
             {
-                // Handle the negative sign as a separate token
-                output += "-1 * ";
-                i++;
+                // Handle the negative sign as part of the number
+                int offset = 1;
+                std::string token = "-";
+
+                while (i + offset < exp.size() && isNumericalToken(exp.at(i + offset)))
+                {
+                    token += exp.at(i + offset);
+                    offset++;
+                }
+
+                output += token;
+                output += " ";
+                i += offset;
                 continue;
             }
 
@@ -69,4 +79,27 @@ std::vector<std::string> RPN::parseString(const std::string& exp)
         {
             opStack.push(std::string(1, exp.at(i)));
         }
-        // Right
+        // Right bracket
+        else if (exp.at(i) == ')')
+        {
+            while (opStack.top() != "(")
+            {
+                output += opStack.top();
+                output += " ";
+                opStack.pop();
+            }
+
+            opStack.pop();
+        }
+        i++;
+    }
+
+    // When there are is no more infix input, empty the stack onto the output
+    while (!opStack.empty())
+    {
+        output += opStack.top();
+        output += " ";
+        opStack.pop();
+    }
+
+    std::
