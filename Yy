@@ -1,111 +1,67 @@
-std::vector<std::string> RPN::parseString(const std::string& exp)
+long double RPNEvaluator::evaluateRPN(std::vector<std::string>& rpn)
 {
-    std::string output = "";
-    std::stack<std::string> opStack;
-    opStack.push(" ");
+    std::stack<long double> opStack;
+    opStack.push(0.0);
 
-    int i = 0;
-    while (i < exp.length())
+    for (std::string token : rpn)
     {
-        // Found a numerical value
-        if (isNumericalToken(exp.at(i)))
+        //Found operator
+        if (RPN::isOperator(token[0]))
         {
-            int offset = 1;
-            std::string token = std::string(1, exp.at(i));
-
-            while (i + offset < exp.size() && isNumericalToken(exp.at(i + offset)))
-            {
-                token += exp.at(i + offset);
-                offset++;
+            //Retrieve previous two operands
+            if (opStack.size() < 2) {
+                // Not enough operands in the stack
+                // Handle the error appropriately
+                // For now, return 0.0
+                return 0.0;
             }
-
-            output += token;
-            output += " ";
-            i += offset;
-            continue;
-        }
-        // Found a function
-        else if (isAlphaToken(exp.at(i)))
-        {
-            int offset = 1;
-            std::string token = std::string(1, exp.at(i));
-
-            while (i + offset < exp.size() && isAlphaToken(exp.at(i + offset)))
-            {
-                token += exp.at(i + offset);
-                offset++;
-            }
-
-            opStack.push(token);
-            i += offset;
-            continue;
-        }
-        // Found an operator
-        else if (isOperator(exp.at(i)))
-        {
-            // Check if the operator is a subtraction and if the previous token was an operator or left parenthesis
-            if (exp.at(i) == '-' && (i == 0 || isOperator(exp.at(i - 1)) || exp.at(i - 1) == '('))
-            {
-                // Handle the negative sign as part of the number
-                int offset = 1;
-                std::string token = "-";
-
-                while (i + offset < exp.size() && isNumericalToken(exp.at(i + offset)))
-                {
-                    token += exp.at(i + offset);
-                    offset++;
-                }
-
-                output += token;
-                output += " ";
-                i += offset;
-                continue;
-            }
-
-            while (((isFunction(opStack.top())) ||
-                    (deltaPriority(exp.at(i), opStack.top()) < 0) ||
-                    ((deltaPriority(exp.at(i), opStack.top()) == 0) && (exp.at(i) != '^'))) &&
-                   (opStack.top() != "("))
-            {
-                output += opStack.top();
-                output += " ";
-                opStack.pop();
-            }
-
-            opStack.push(std::string(1, exp.at(i)));
-        }
-        // Left bracket
-        else if (exp.at(i) == '(')
-        {
-            opStack.push(std::string(1, exp.at(i)));
-        }
-        // Right bracket
-        else if (exp.at(i) == ')')
-        {
-            while (opStack.top() != "(")
-            {
-                output += opStack.top();
-                output += " ";
-                opStack.pop();
-            }
-
+            long double operand2 = opStack.top();
             opStack.pop();
+
+            long double operand1 = opStack.top();
+            opStack.pop();
+
+            //Perform relevant operation
+            switch (token[0])
+            {
+                case '^': opStack.push(pow(operand1, operand2));  break;
+                case '/': opStack.push(operand1 / operand2); break;
+                case '*': opStack.push(operand1 * operand2); break;
+                case '+': opStack.push(operand1 + operand2); break;
+                case '-': opStack.push(operand1 - operand2); break;
+            }
         }
-        i++;
+        //Found function name
+        else if (RPN::isFunction(token))
+        {
+            std::map<std::string, int> functionMap;
+            // Function mappings...
+
+            //Determine which function to perform; most take one operand, but some take 0 or 2 operands
+            switch (functionMap[token])
+            {
+                // Cases...
+
+                default:
+                    // Handle unknown function
+                    // For now, return 0.0
+                    return 0.0;
+            }
+        }
+        //If numerical value, push onto the stack
+        else if (RPN::isNumericalToken(token[0]))
+        {
+            opStack.push(stold(token));
+        }
     }
 
-    // When there is no more infix input, empty the stack onto the output
-    while (!opStack.empty())
-    {
-        output += opStack.top();
-        output += " ";
-        opStack.pop();
+    // Check if there is exactly one value left on the stack after evaluation
+    if (opStack.size() != 1) {
+        // Handle the error appropriately
+        // For now, return 0.0
+        return 0.0;
     }
 
-    std::istringstream buf(output);
-    std::istream_iterator<std::string> beg(buf), end;
-
-    std::vector<std::string> outputTokens(beg, end);
-
-    return outputTokens;
+    //Retrieve the top element of the stack, which should represent the final simplified value
+    return opStack.top();
 }
