@@ -1,31 +1,3 @@
-#include <iostream>
-#include <stack>
-#include <map>
-#include <vector>
-#include <string>
-#include <sstream>
-#include <iterator>
-#include "RPN.h"
-
-const std::string OPS = "^/*+-";											//Supported operations
-const std::string FUNCTIONS[] = {"sin", "cos", "tan", "max", "e", "pi",		//Supported functions
-                                 "asin", "acos", "atan", "sinh", "cosh",
-                                 "tanh", "asinh", "acosh", "atanh", "ln",
-                                 "log", "sqrt", "cbrt", "ceil", "floor",
-                                 "min", "abs", "phi"};
-
-RPN::RPN()
-{
-}
-
-RPN::~RPN()
-{
-}
-
-/**
-    Takes in a string in infix form and ouputs a vector of tokens
-    corresponding to the appropriate Reverse Polish Notation representation
-*/
 std::vector<std::string> RPN::parseString(const std::string& exp)
 {
     std::string output = "";
@@ -71,29 +43,17 @@ std::vector<std::string> RPN::parseString(const std::string& exp)
         // Found an operator
         else if (isOperator(exp.at(i)))
         {
-            std::string currentOperator(1, exp.at(i));
-            if (currentOperator == "-") {
-                if (i == 0 || exp.at(i - 1) == '(') {
-                    // Negative sign, treat it as part of the numerical value
-                    int offset = 1;
-                    std::string token = currentOperator;
-
-                    while (i + offset < exp.size() && isNumericalToken(exp.at(i + offset)))
-                    {
-                        token += exp.at(i + offset);
-                        offset++;
-                    }
-
-                    output += token;
-                    output += " ";
-                    i += offset;
-                    continue;
-                }
+            // Check if it's a double operator (e.g., 1 - - 1)
+            if (exp.at(i) == '-' && i + 1 < exp.size() && exp.at(i + 1) == '-')
+            {
+                output += "# "; // Replace double operator with "#"
+                i += 2;
+                continue;
             }
 
             while (((isFunction(opStack.top())) ||
-                    (deltaPriority(currentOperator, opStack.top()) < 0)  ||
-                    ((deltaPriority(currentOperator, opStack.top()) == 0) && (currentOperator != "^"))) &&
+                    (deltaPriority(exp.at(i), opStack.top()) < 0) ||
+                    ((deltaPriority(exp.at(i), opStack.top()) == 0) && (exp.at(i) != '^'))) &&
                    (opStack.top() != "("))
             {
                 output += opStack.top();
@@ -101,11 +61,40 @@ std::vector<std::string> RPN::parseString(const std::string& exp)
                 opStack.pop();
             }
 
-            opStack.push(currentOperator);
+            opStack.push(std::string(1, exp.at(i)));
         }
         // Left bracket
         else if (exp.at(i) == '(')
         {
             opStack.push(std::string(1, exp.at(i)));
         }
-        // Right bracket.
+        // Right bracket
+        else if (exp.at(i) == ')')
+        {
+            while (opStack.top() != "(")
+            {
+                output += opStack.top();
+                output += " ";
+                opStack.pop();
+            }
+
+            opStack.pop();
+        }
+        i++;
+    }
+
+    // When there are no more infix input, empty the stack onto the output
+    while (!opStack.empty())
+    {
+        output += opStack.top();
+        output += " ";
+        opStack.pop();
+    }
+
+    std::istringstream buf(output);
+    std::istream_iterator<std::string> beg(buf), end;
+
+    std::vector<std::string> outputTokens(beg, end);
+
+    return outputTokens;
+}
