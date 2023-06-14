@@ -1,5 +1,3 @@
-// ...
-
 std::vector<std::string> RPN::parseString(const std::string& exp)
 {
     std::string output = "";
@@ -9,46 +7,94 @@ std::vector<std::string> RPN::parseString(const std::string& exp)
     int i = 0;
     while (i < exp.length())
     {
-        // ...
+        //Found a numerical value
+        if (isNumericalToken(exp.at(i)))
+        {
+            int offset = 1;
+            std::string token = std::string(1, exp.at(i));
 
+            while (i + offset < exp.size() && isNumericalToken(exp.at(i + offset)))
+            {
+                token += exp.at(i + offset);
+                offset++;
+            }
+
+            output += token;
+            output += " ";
+            i += offset;
+            continue;
+        }
+        //Found a function
+        else if (isAlphaToken(exp.at(i)))
+        {
+            int offset = 1;
+            std::string token = std::string(1, exp.at(i));
+
+            while (i + offset < exp.size() && isAlphaToken(exp.at(i + offset)))
+            {
+                token += exp.at(i + offset);
+                offset++;
+            }
+
+            opStack.push(token);
+            i += offset;
+            continue;
+        }
         //Found an operator
         else if (isOperator(exp.at(i)))
         {
-            if (exp.at(i) == '-' && (i == 0 || exp.at(i - 1) == '('))
+            std::string token(1, exp.at(i));
+            // Check if the next character is also an operator
+            if (i + 1 < exp.length() && isOperator(exp.at(i + 1)))
             {
-                // Check if '-' is a negative sign instead of a subtraction operator
-                int offset = 1;
-                std::string token = "-";
-                while (i + offset < exp.size() && isNumericalToken(exp.at(i + offset)))
-                {
-                    token += exp.at(i + offset);
-                    offset++;
-                }
-                output += token;
-                output += " ";
-                i += offset;
-                continue;
+                token += exp.at(i + 1); // Combine the two operators
+                i++; // Move to the next character
             }
 
             while (((isFunction(opStack.top())) ||
-                    (deltaPriority(exp.at(i), opStack.top()) < 0) ||
-                    ((deltaPriority(exp.at(i), opStack.top()) == 0) && (exp.at(i) != '^'))) &&
-                   (opStack.top() != "("))
+                    (deltaPriority(token, opStack.top()) < 0)  ||
+                    ((deltaPriority(token, opStack.top()) == 0) && (token != "^"))) &&
+                    (opStack.top() != "("))
             {
                 output += opStack.top();
                 output += " ";
                 opStack.pop();
             }
 
+            opStack.push(token);
+        }
+        //Left bracket
+        else if (exp.at(i) == '(')
+        {
             opStack.push(std::string(1, exp.at(i)));
         }
+        //Right bracket
+        else if (exp.at(i) == ')')
+        {
+            while (opStack.top() != "(")
+            {
+                output += opStack.top();
+                output += " ";
+                opStack.pop();
+            }
 
-        // ...
+            opStack.pop();
+        }
+        i++;
     }
 
-    // ...
+    //When there are is no more infix input, empty the stack onto the output
+    while (!opStack.empty())
+    {
+        output += opStack.top();
+        output += " ";
+        opStack.pop();
+    }
+
+    std::istringstream buf(output);
+    std::istream_iterator<std::string> beg(buf), end;
+
+    std::vector<std::string> outputTokens(beg, end);
 
     return outputTokens;
 }
-
-// ...
