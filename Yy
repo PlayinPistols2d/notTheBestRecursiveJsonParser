@@ -1,19 +1,14 @@
 #include <iostream>
 #include <QString>
-#include <QRegularExpression>
 #include <cmath>
 
 int main() {
-    QString expression = "1+cos(2)*3 + 1.2e+10 - 23/( sqrt(9)-2)";
+    QString expression = "1+cos(2)*3 + 1.0e-10 - 23/( sqrt(9)-2)";
     QString result;
 
-    QRegularExpression tokenRegex("(\\d+\\.?\\d*(?:e[+-]?\\d+)?)|([^\\s]+)");
-    QRegularExpressionMatchIterator tokenIterator = tokenRegex.globalMatch(expression);
+    QStringList tokens = expression.split(' ', QString::SkipEmptyParts);
 
-    while (tokenIterator.hasNext()) {
-        QRegularExpressionMatch match = tokenIterator.next();
-        QString token = match.captured();
-
+    for (const QString& token : tokens) {
         if (token.contains('e') || token.contains('E')) {
             double number = token.toDouble();
             result += QString::number(number, 'g', 15);
@@ -21,10 +16,11 @@ int main() {
         else {
             result += token;
         }
+        result += " ";
     }
 
     std::cout << "Original expression: " << expression.toStdString() << std::endl;
-    std::cout << "Transformed expression: " << result.toStdString() << std::endl;
+    std::cout << "Transformed expression: " << result.trimmed().toStdString() << std::endl;
 
     return 0;
 }
