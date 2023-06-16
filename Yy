@@ -1,42 +1,26 @@
 #include <iostream>
 #include <QString>
+#include <QRegularExpression>
 #include <cmath>
 
 int main() {
     QString expression = "1+cos(2)*3 + 1.2e+10 - 23/( sqrt(9)-2)";
     QString result;
-    int pos = 0;
 
-    while (pos < expression.length()) {
-        if (expression[pos] == 'e' || expression[pos] == 'E') {
-            // Find the start position of the exponential part
-            int start = pos - 1;
-            while (start > 0 && expression[start].isDigit()) {
-                start--;
-            }
-            start++;
+    QRegularExpression tokenRegex("(\\d+\\.?\\d*(?:e[+-]?\\d+)?)|([^\\s]+)");
+    QRegularExpressionMatchIterator tokenIterator = tokenRegex.globalMatch(expression);
 
-            // Find the end position of the exponential part
-            int end = pos + 1;
-            while (end < expression.length() && (expression[end].isDigit() || expression[end] == '+' || expression[end] == '-')) {
-                end++;
-            }
+    while (tokenIterator.hasNext()) {
+        QRegularExpressionMatch match = tokenIterator.next();
+        QString token = match.captured();
 
-            // Extract the exponential part and convert it to a normal number
-            QString exponential = expression.mid(start, end - start);
-            double number = exponential.toDouble();
-
-            // Replace the exponential part with the normal number in the expression
+        if (token.contains('e') || token.contains('E')) {
+            double number = token.toDouble();
             result += QString::number(number, 'g', 15);
-
-            // Move the position to the end of the exponential part
-            pos = end - 1;
         }
         else {
-            result += expression[pos];
+            result += token;
         }
-
-        pos++;
     }
 
     std::cout << "Original expression: " << expression.toStdString() << std::endl;
