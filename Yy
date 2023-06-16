@@ -1,36 +1,25 @@
-#include <QtCore/QString>
-#include <QtCore/QRegExp>
+#include <QString>
+#include <QRegExp>
 
-QString convertExponential(QString expression)
+QString replaceExponentialForm(const QString& expression)
 {
+    QString result = expression;
     QRegExp regex("([+-]?\\d*\\.?\\d+[eE][+-]?\\d+)");
-    int pos = 0;
-    
-    while ((pos = regex.indexIn(expression, pos)) != -1) {
-        QString match = regex.cap(1);
-        
-        QStringList parts = match.split(QRegExp("[eE]"));
-        QString base = parts[0];
-        QString exponent = parts[1];
-        
-        double number = base.toDouble();
-        int exp = exponent.toInt();
-        
-        QString converted = QString::number(number * qPow(10, exp));
-        expression.replace(match, converted);
-        pos += match.length();
-    }
-    
-    return expression;
-}
 
-int main()
-{
-    QString expression = "1+cos(2)*3 + 1.0e+10 - 23/( sqrt(9)-2)";
-    QString convertedExpression = convertExponential(expression);
-    
-    qDebug() << "Original expression:" << expression;
-    qDebug() << "Converted expression:" << convertedExpression;
-    
-    return 0;
+    int pos = 0;
+    while ((pos = regex.indexIn(result, pos)) != -1) {
+        QString matchedNumber = regex.cap(1);
+        bool ok;
+        double number = matchedNumber.toDouble(&ok);
+
+        if (ok) {
+            QString replacement = QString::number(number, 'f', 6);  // Замените '6' на нужное вам количество знаков после запятой
+            result.replace(pos, matchedNumber.length(), replacement);
+            pos += replacement.length();
+        } else {
+            pos += matchedNumber.length();
+        }
+    }
+
+    return result;
 }
