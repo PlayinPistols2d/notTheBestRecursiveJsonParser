@@ -1,41 +1,29 @@
-#include <QCoreApplication>
-#include <QString>
-#include <QDebug>
+#include <QtCore/QString>
+#include <QtCore/QRegExp>
 
-QString replaceExponential(QString expression)
+QString convertExponential(QString expression)
 {
+    QRegExp regex("([+-]?\\d*\\.?\\d+[eE][+-]?\\d+)");
     int pos = 0;
-    bool ok = false;
     
-    // Находим первое вхождение экспоненциальной формы
-    double number = expression.toDouble(&ok);
-    while (!ok && pos < expression.length())
-    {
-        number = expression.mid(pos).toDouble(&ok);
-        pos++;
-    }
-    
-    if (ok)
-    {
-        // Преобразуем число в нормальную форму
-        QString numberString = QString::number(number, 'g', 15);
-        
-        // Заменяем экспоненциальную форму на нормальную в выражении
-        expression.replace(QString::number(number), numberString);
+    while ((pos = regex.indexIn(expression, pos)) != -1) {
+        QString match = regex.cap(1);
+        double number = match.toDouble();
+        QString converted = QString::number(number);
+        expression.replace(match, converted);
+        pos += match.length();
     }
     
     return expression;
 }
 
-int main(int argc, char *argv[])
+int main()
 {
-    QCoreApplication a(argc, argv);
-    
     QString expression = "1+cos(2)*3 + 1.2e+10 - 23/( sqrt(9)-2)";
-    QString transformedExpression = replaceExponential(expression);
+    QString convertedExpression = convertExponential(expression);
     
-    qDebug() << "Original Expression: " << expression;
-    qDebug() << "Transformed Expression: " << transformedExpression;
-
-    return a.exec();
+    qDebug() << "Original expression:" << expression;
+    qDebug() << "Converted expression:" << convertedExpression;
+    
+    return 0;
 }
