@@ -16,7 +16,7 @@ QString convertExponential(QString expression)
         double number = base.toDouble();
         int exp = exponent.toInt();
         
-        QString converted = QString::number(number, 'g', 15) + "e" + QString::number(exp);
+        QString converted = QString::number(number * qPow(10, exp));
         expression.replace(match, converted);
         pos += match.length();
     }
