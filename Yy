@@ -1,26 +1,41 @@
-#include <iostream>
+#include <QCoreApplication>
 #include <QString>
-#include <cmath>
+#include <QDebug>
 
-int main() {
-    QString expression = "1+cos(2)*3 + 1.0e-10 - 23/( sqrt(9)-2)";
-    QString result;
-
-    QStringList tokens = expression.split(' ', QString::SkipEmptyParts);
-
-    for (const QString& token : tokens) {
-        if (token.contains('e') || token.contains('E')) {
-            double number = token.toDouble();
-            result += QString::number(number, 'g', 15);
-        }
-        else {
-            result += token;
-        }
-        result += " ";
+QString replaceExponential(QString expression)
+{
+    int pos = 0;
+    bool ok = false;
+    
+    // Находим первое вхождение экспоненциальной формы
+    double number = expression.toDouble(&ok);
+    while (!ok && pos < expression.length())
+    {
+        number = expression.mid(pos).toDouble(&ok);
+        pos++;
     }
+    
+    if (ok)
+    {
+        // Преобразуем число в нормальную форму
+        QString numberString = QString::number(number, 'g', 15);
+        
+        // Заменяем экспоненциальную форму на нормальную в выражении
+        expression.replace(QString::number(number), numberString);
+    }
+    
+    return expression;
+}
 
-    std::cout << "Original expression: " << expression.toStdString() << std::endl;
-    std::cout << "Transformed expression: " << result.trimmed().toStdString() << std::endl;
+int main(int argc, char *argv[])
+{
+    QCoreApplication a(argc, argv);
+    
+    QString expression = "1+cos(2)*3 + 1.2e+10 - 23/( sqrt(9)-2)";
+    QString transformedExpression = replaceExponential(expression);
+    
+    qDebug() << "Original Expression: " << expression;
+    qDebug() << "Transformed Expression: " << transformedExpression;
 
-    return 0;
+    return a.exec();
 }
