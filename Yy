@@ -1,100 +1,46 @@
-std::vector<std::string> RPN::parseString(const std::string& exp)
-{
-    std::string output = "";
-    std::stack<std::string> opStack;
-    opStack.push(" ");
+#include <iostream>
+#include <string>
+#include <cmath>
 
-    int i = 0;
-    while (i < exp.length())
-    {
-        // Found a numerical value
-        if (isNumericalToken(exp.at(i)))
-        {
-            int offset = 1;
-            std::string token = std::string(1, exp.at(i));
-
-            while (i + offset < exp.size() && isNumericalToken(exp.at(i + offset)))
-            {
-                token += exp.at(i + offset);
-                offset++;
+int main() {
+    std::string expression = "1+cos(2)*3 + 1.2e+10 - 23/( sqrt(9)-2)";
+    std::string result;
+    size_t pos = 0;
+    
+    while (pos < expression.length()) {
+        if (expression[pos] == 'e' || expression[pos] == 'E') {
+            // Find the start position of the exponential part
+            size_t start = pos - 1;
+            while (start > 0 && std::isdigit(expression[start])) {
+                start--;
             }
-
-            output += token;
-            output += " ";
-            i += offset;
-            continue;
-        }
-        // Found a function
-        else if (isAlphaToken(exp.at(i)))
-        {
-            int offset = 1;
-            std::string token = std::string(1, exp.at(i));
-
-            while (i + offset < exp.size() && isAlphaToken(exp.at(i + offset)))
-            {
-                token += exp.at(i + offset);
-                offset++;
+            start++;
+            
+            // Find the end position of the exponential part
+            size_t end = pos + 1;
+            while (end < expression.length() && (std::isdigit(expression[end]) || expression[end] == '+' || expression[end] == '-')) {
+                end++;
             }
-
-            opStack.push(token);
-            i += offset;
-            continue;
+            
+            // Extract the exponential part and convert it to a normal number
+            std::string exponential = expression.substr(start, end - start);
+            double number = std::stod(exponential);
+            
+            // Replace the exponential part with the normal number in the expression
+            result += std::to_string(number);
+            
+            // Move the position to the end of the exponential part
+            pos = end - 1;
         }
-        // Found an operator
-        else if (isOperator(exp.at(i)))
-        {
-            // Check if it's a double operator (e.g., 1 - - 1)
-            if (exp.at(i) == '-' && i + 1 < exp.size() && exp.at(i + 1) == '-')
-            {
-                output += "# "; // Replace double operator with "#"
-                i += 2;
-                continue;
-            }
-
-            while (((isFunction(opStack.top())) ||
-                    (deltaPriority(exp.at(i), opStack.top()) < 0) ||
-                    ((deltaPriority(exp.at(i), opStack.top()) == 0) && (exp.at(i) != '^'))) &&
-                   (opStack.top() != "("))
-            {
-                output += opStack.top();
-                output += " ";
-                opStack.pop();
-            }
-
-            opStack.push(std::string(1, exp.at(i)));
+        else {
+            result += expression[pos];
         }
-        // Left bracket
-        else if (exp.at(i) == '(')
-        {
-            opStack.push(std::string(1, exp.at(i)));
-        }
-        // Right bracket
-        else if (exp.at(i) == ')')
-        {
-            while (opStack.top() != "(")
-            {
-                output += opStack.top();
-                output += " ";
-                opStack.pop();
-            }
-
-            opStack.pop();
-        }
-        i++;
+        
+        pos++;
     }
+    
+    std::cout << "Original expression: " << expression << std::endl;
+    std::cout << "Transformed expression: " << result << std::endl;
 
-    // When there are no more infix input, empty the stack onto the output
-    while (!opStack.empty())
-    {
-        output += opStack.top();
-        output += " ";
-        opStack.pop();
-    }
-
-    std::istringstream buf(output);
-    std::istream_iterator<std::string> beg(buf), end;
-
-    std::vector<std::string> outputTokens(beg, end);
-
-    return outputTokens;
+    return 0;
 }
