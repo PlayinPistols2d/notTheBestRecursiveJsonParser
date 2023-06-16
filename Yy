@@ -27,7 +27,7 @@ int main() {
             double number = exponential.toDouble();
 
             // Replace the exponential part with the normal number in the expression
-            result += QString::number(number);
+            result += QString::number(number, 'g', 15);
 
             // Move the position to the end of the exponential part
             pos = end - 1;
