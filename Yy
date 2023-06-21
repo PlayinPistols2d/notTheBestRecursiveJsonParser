@@ -1,25 +1,35 @@
 #include <QString>
-#include <QRegExp>
+#include <QDebug>
 
-QString replaceExponentialForm(const QString& expression)
-{
-    QString result = expression;
-    QRegExp regex("([+-]?\\d*\\.?\\d+[eE][+-]?\\d+)");
+int main() {
+    QString inputString = "(Hello (world))";
+    QString outputString = inputString;
 
-    int pos = 0;
-    while ((pos = regex.indexIn(result, pos)) != -1) {
-        QString matchedNumber = regex.cap(1);
-        bool ok;
-        double number = matchedNumber.toDouble(&ok);
+    bool error = false;
 
-        if (ok) {
-            QString replacement = QString::number(number, 'f', 6);  // Замените '6' на нужное вам количество знаков после запятой
-            result.replace(pos, matchedNumber.length(), replacement);
-            pos += replacement.length();
-        } else {
-            pos += matchedNumber.length();
+    while (true) {
+        int openingBracketIndex = outputString.indexOf('(');
+        int closingBracketIndex = outputString.indexOf(')');
+
+        if (openingBracketIndex == -1 && closingBracketIndex == -1) {
+            break;  // Если нет больше скобок, выходим из цикла
         }
+
+        if (openingBracketIndex == -1 || closingBracketIndex == -1 || closingBracketIndex < openingBracketIndex) {
+            error = true;
+            break;  // Обнаружена ошибка в выражении, выходим из цикла
+        }
+
+        // Находим индексы первой пары скобок и удаляем их из строки
+        outputString.remove(closingBracketIndex, 1);
+        outputString.remove(openingBracketIndex, 1);
     }
 
-    return result;
+    if (error) {
+        qDebug() << "Ошибка в выражении: неправильное количество скобок.";
+    } else {
+        qDebug() << "Результат: " << outputString;
+    }
+
+    return 0;
 }
