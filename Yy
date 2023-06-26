@@ -1,24 +1,31 @@
 #include <QString>
 #include <QDebug>
 
-QString formatNumber(const QString& stringValue) {
-    int lastSignificantDigitIndex = stringValue.indexOf(QRegExp("[^0]")) - 1;
+float formatNumber(const QString& input) {
+    int lastSignificantIndex = input.indexOf(QRegExp("[^0-9]")) - 1;
 
-    if (lastSignificantDigitIndex < 0) {
-        return "0";
+    if (lastSignificantIndex < 0) {
+        return 0.0f;
     }
 
-    QString formattedString = stringValue.left(lastSignificantDigitIndex + 1);
+    QString formattedString = input.left(lastSignificantIndex + 1);
     formattedString.replace(",", ".");
 
-    return formattedString;
+    bool ok = false;
+    float result = formattedString.toFloat(&ok);
+
+    if (!ok) {
+        result = 0.0f;
+    }
+
+    return result;
 }
 
 int main() {
-    QString stringValue = "0,008";
-    QString formattedString = formatNumber(stringValue);
+    QString input = "0,008";
+    float result = formatNumber(input);
 
-    qDebug() << formattedString;
+    qDebug() << result;
 
     return 0;
 }
