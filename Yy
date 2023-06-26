@@ -1,35 +1,24 @@
 #include <QString>
 #include <QDebug>
 
+QString formatNumber(const QString& stringValue) {
+    int lastSignificantDigitIndex = stringValue.indexOf(QRegExp("[^0]")) - 1;
+
+    if (lastSignificantDigitIndex < 0) {
+        return "0";
+    }
+
+    QString formattedString = stringValue.left(lastSignificantDigitIndex + 1);
+    formattedString.replace(",", ".");
+
+    return formattedString;
+}
+
 int main() {
-    QString inputString = "(Hello (world))";
-    QString outputString = inputString;
+    QString stringValue = "0,008";
+    QString formattedString = formatNumber(stringValue);
 
-    bool error = false;
-
-    while (true) {
-        int openingBracketIndex = outputString.indexOf('(');
-        int closingBracketIndex = outputString.indexOf(')');
-
-        if (openingBracketIndex == -1 && closingBracketIndex == -1) {
-            break;  // Если нет больше скобок, выходим из цикла
-        }
-
-        if (openingBracketIndex == -1 || closingBracketIndex == -1 || closingBracketIndex < openingBracketIndex) {
-            error = true;
-            break;  // Обнаружена ошибка в выражении, выходим из цикла
-        }
-
-        // Находим индексы первой пары скобок и удаляем их из строки
-        outputString.remove(closingBracketIndex, 1);
-        outputString.remove(openingBracketIndex, 1);
-    }
-
-    if (error) {
-        qDebug() << "Ошибка в выражении: неправильное количество скобок.";
-    } else {
-        qDebug() << "Результат: " << outputString;
-    }
+    qDebug() << formattedString;
 
     return 0;
 }
