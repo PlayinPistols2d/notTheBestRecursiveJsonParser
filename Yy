@@ -1,31 +1,46 @@
-#include <QString>
-#include <QDebug>
+#include <QtCore/QList>
+#include <QtCore/QMap>
+#include <QtGui/QComboBox>
+#include <algorithm>
 
-float formatNumber(const QString& input) {
-    int lastSignificantIndex = input.indexOf(QRegExp("[^0-9]")) - 1;
-
-    if (lastSignificantIndex < 0) {
-        return 0.0f;
+// Определение вашего типа данных mytype
+class mytype {
+public:
+    int getNumber() const {
+        return number_;
     }
 
-    QString formattedString = input.left(lastSignificantIndex + 1);
-    formattedString.replace(",", ".");
+private:
+    int number_;
+};
 
-    bool ok = false;
-    float result = formattedString.toFloat(&ok);
-
-    if (!ok) {
-        result = 0.0f;
-    }
-
-    return result;
+// Функция для сравнения значений int в mytype
+bool compareMyType(const mytype& a, const mytype& b) {
+    return a.getNumber() < b.getNumber();
 }
 
 int main() {
-    QString input = "0,008";
-    float result = formatNumber(input);
+    QList<mytype> myList;
 
-    qDebug() << result;
+    // Заполните QList данными
+
+    // Сортируем QList по возрастанию значений int
+    std::sort(myList.begin(), myList.end(), compareMyType);
+
+    // Заполняем комбобокс значениями int, отсортированными по возрастанию
+    QComboBox comboBox;
+    for (const auto& item : myList) {
+        comboBox.addItem(QString::number(item.getNumber()));
+    }
+
+    // Создаем QMap<int, mytype> с аналогичной сортировкой
+    QMap<int, mytype> myMap;
+    for (const auto& item : myList) {
+        myMap.insert(item.getNumber(), item);
+    }
+
+    // Теперь comboBox содержит отсортированные значения int,
+    // а myMap содержит QMap с аналогичной сортировкой
 
     return 0;
 }
