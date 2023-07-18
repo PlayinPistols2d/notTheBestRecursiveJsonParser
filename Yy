@@ -1,1 +1,126 @@
+#ifndef CUSTOMCOMBOBOXLINEEDIT_H
+#define CUSTOMCOMBOBOXLINEEDIT_H
+
+#include <QLineEdit>
+#include <QCompleter>
+#include <QStringListModel>
+#include <QKeyEvent>
+
+class CustomComboBoxLineEdit : public QLineEdit
+{
+    Q_OBJECT
+
+public:
+    explicit CustomComboBoxLineEdit(QWidget* parent = nullptr);
+
+    void setCompleter(QCompleter* completer);
+    QCompleter* getCompleter() const;
+
+protected:
+    void keyPressEvent(QKeyEvent* event) override;
+
+private slots:
+    void insertCompletion(const QString& completion);
+
+private:
+    QCompleter* completer;
+};
+
+#endif // CUSTOMCOMBOBOXLINEEDIT_H
+
+
+
+
+
+
+
+#include "customcomboboxlineedit.h"
+
+CustomComboBoxLineEdit::CustomComboBoxLineEdit(QWidget* parent)
+    : QLineEdit(parent), completer(nullptr)
+{
+    setPlaceholderText("Type here...");
+}
+
+void CustomComboBoxLineEdit::setCompleter(QCompleter* completer)
+{
+    if (this->completer)
+    {
+        disconnect(this->completer, nullptr, this, nullptr);
+    }
+
+    this->completer = completer;
+
+    if (!completer)
+    {
+        return;
+    }
+
+    completer->setParent(this);
+    completer->setCompletionMode(QCompleter::PopupCompletion);
+    completer->setCaseSensitivity(Qt::CaseInsensitive);
+    connect(completer, SIGNAL(activated(QString)), this, SLOT(insertCompletion(QString)));
+}
+
+QCompleter* CustomComboBoxLineEdit::getCompleter() const
+{
+    return completer;
+}
+
+void CustomComboBoxLineEdit::keyPressEvent(QKeyEvent* event)
+{
+    if (completer && completer->popup()->isVisible())
+    {
+        // Let the completer handle the key events
+        switch (event->key())
+        {
+            case Qt::Key_Enter:
+            case Qt::Key_Return:
+            case Qt::Key_Escape:
+            case Qt::Key_Tab:
+            case Qt::Key_Backtab:
+                event->ignore();
+                return;  // The completer will do the default behavior
+            default:
+                break;
+        }
+    }
+
+    QLineEdit::keyPressEvent(event);
+
+    if (!completer)
+    {
+        return;
+    }
+
+    const QString& text = this->text();
+    if (text.isEmpty())
+    {
+        completer->popup()->hide();
+        return;
+    }
+
+    if (text != completer->completionPrefix())
+    {
+        completer->setCompletionPrefix(text);
+        completer->popup()->setCurrentIndex(completer->completionModel()->index(0, 0));
+    }
+
+    QRect rect = cursorRect();
+    rect.setWidth(completer->popup()->sizeHintForColumn(0) + completer->popup()->verticalScrollBar()->sizeHint().width());
+    completer->complete(rect);
+}
+
+void CustomComboBoxLineEdit::insertCompletion(const QString& completion)
+{
+    if (completer->widget() != this)
+    {
+        return;
+    }
+
+    setText(completion);
+    selectAll();
+}
+
+
 
