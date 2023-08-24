@@ -1,47 +1,43 @@
-#include <QApplication>
-#include <QMainWindow>
-#include <QLineEdit>
-#include <QCompleter>
-#include <QListView>
-
-class MainWindow : public QMainWindow {
+class CustomCompleter : public QCompleter {
     Q_OBJECT
 public:
-    MainWindow(QWidget *parent = nullptr) : QMainWindow(parent) {
-        setWindowTitle("QCompleter Highlight Example");
+    CustomCompleter(QObject *parent = nullptr) : QCompleter(parent) {
+        setPopup(new QTreeView);
+        popup()->setObjectName("animatedPopup"); // Для стилизации анимации
+    }
 
-        QWidget *centralWidget = new QWidget(this);
-        QVBoxLayout *layout = new QVBoxLayout(centralWidget);
+    void showPopup() override {
+        if (popup()->isVisible()) return;
+        popup()->setGeometry(visualRect(currentRow())); // Устанавливаем начальные координаты
+        popup()->setMaximumHeight(0); // Начальная высота = 0
 
-        QLineEdit *lineEdit = new QLineEdit(this);
-        QCompleter *completer = new QCompleter(QStringList() << "Item 1" << "Item 2" << "Item 3");
+        QPropertyAnimation *animation = new QPropertyAnimation(popup(), "maximumHeight");
+        animation->setDuration(300); // Продолжительность анимации (в миллисекундах)
+        animation->setEasingCurve(QEasingCurve::OutCubic);
+        animation->setStartValue(0); // Начальное значение высоты
+        animation->setEndValue(popup()->sizeHintForRow(0) * popup()->model()->rowCount()); // Конечное значение высоты
 
-        completer->setPopup(new QListView());  // Используем QListView для более точного контроля
-        lineEdit->setCompleter(completer);
+        connect(animation, &QPropertyAnimation::finished, popup(), [this]() {
+            popup()->setMaximumHeight(QWIDGETSIZE_MAX); // После анимации, установим максимальную высоту
+        });
 
-        // Применение QSS для стилизации подсветки при наведении
-        completer->popup()->setStyleSheet(
-            "QListView::item:hover {"
-            "    background-color: palette(Highlight);"
-            "    color: palette(HighlightedText);"
-            "}"
-            "QListView::item:selected {"
-            "    background-color: palette(Highlight);"
-            "    color: palette(HighlightedText);"
-            "}"
-        );
+        popup()->show();
+        animation->start(QAbstractAnimation::DeleteWhenStopped);
+    }
 
-        layout->addWidget(lineEdit);
-        centralWidget->setLayout(layout);
-        setCentralWidget(centralWidget);
+    void hidePopup() override {
+        if (!popup()->isVisible()) return;
+
+        QPropertyAnimation *animation = new QPropertyAnimation(popup(), "maximumHeight");
+        animation->setDuration(300);
+        animation->setEasingCurve(QEasingCurve::InCubic);
+        animation->setStartValue(popup()->sizeHintForRow(0) * popup()->model()->rowCount());
+        animation->setEndValue(0);
+
+        connect(animation, &QPropertyAnimation::finished, popup(), [this]() {
+            popup()->hide();
+        });
+
+        animation->start(QAbstractAnimation::DeleteWhenStopped);
     }
 };
-
-int main(int argc, char *argv[]) {
-    QApplication app(argc, argv);
-    MainWindow window;
-    window.show();
-    return app.exec();
-}
-
-#include "main.moc"
