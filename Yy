@@ -1,43 +1,37 @@
-class CustomCompleter : public QCompleter {
-    Q_OBJECT
+#include <QCompleter>
+#include <QStyledItemDelegate>
+#include <QEvent>
+#include <QMouseEvent>
+
+class CustomCompleterDelegate : public QStyledItemDelegate
+{
 public:
-    CustomCompleter(QObject *parent = nullptr) : QCompleter(parent) {
-        setPopup(new QTreeView);
-        popup()->setObjectName("animatedPopup"); // Для стилизации анимации
-    }
+    using QStyledItemDelegate::QStyledItemDelegate;
 
-    void showPopup() override {
-        if (popup()->isVisible()) return;
-        popup()->setGeometry(visualRect(currentRow())); // Устанавливаем начальные координаты
-        popup()->setMaximumHeight(0); // Начальная высота = 0
+    bool editorEvent(QEvent *event, QAbstractItemModel *model, const QStyleOptionViewItem &option, const QModelIndex &index) override
+    {
+        if (event->type() == QEvent::MouseMove)
+        {
+            QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
+            if (option.rect.contains(mouseEvent->pos()))
+            {
+                // Здесь вы можете выполнять действия при наведении мыши на элемент
+                // Например, получить индекс элемента index и выполнить нужные вам действия
+                // ...
+            }
+        }
 
-        QPropertyAnimation *animation = new QPropertyAnimation(popup(), "maximumHeight");
-        animation->setDuration(300); // Продолжительность анимации (в миллисекундах)
-        animation->setEasingCurve(QEasingCurve::OutCubic);
-        animation->setStartValue(0); // Начальное значение высоты
-        animation->setEndValue(popup()->sizeHintForRow(0) * popup()->model()->rowCount()); // Конечное значение высоты
-
-        connect(animation, &QPropertyAnimation::finished, popup(), [this]() {
-            popup()->setMaximumHeight(QWIDGETSIZE_MAX); // После анимации, установим максимальную высоту
-        });
-
-        popup()->show();
-        animation->start(QAbstractAnimation::DeleteWhenStopped);
-    }
-
-    void hidePopup() override {
-        if (!popup()->isVisible()) return;
-
-        QPropertyAnimation *animation = new QPropertyAnimation(popup(), "maximumHeight");
-        animation->setDuration(300);
-        animation->setEasingCurve(QEasingCurve::InCubic);
-        animation->setStartValue(popup()->sizeHintForRow(0) * popup()->model()->rowCount());
-        animation->setEndValue(0);
-
-        connect(animation, &QPropertyAnimation::finished, popup(), [this]() {
-            popup()->hide();
-        });
-
-        animation->start(QAbstractAnimation::DeleteWhenStopped);
+        return QStyledItemDelegate::editorEvent(event, model, option, index);
     }
 };
+
+int main(int argc, char *argv[])
+{
+    QApplication app(argc, argv);
+
+    QCompleter completer(/* ваша модель данных */, /* ваш родительский виджет */);
+    CustomCompleterDelegate completerDelegate(&completer);
+    completer.setPopupDelegate(&completerDelegate);
+
+    // ...
+}
