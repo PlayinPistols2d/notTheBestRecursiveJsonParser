@@ -1,37 +1,82 @@
-#include <QCompleter>
-#include <QStyledItemDelegate>
-#include <QEvent>
-#include <QMouseEvent>
-
-class CustomCompleterDelegate : public QStyledItemDelegate
-{
-public:
-    using QStyledItemDelegate::QStyledItemDelegate;
-
-    bool editorEvent(QEvent *event, QAbstractItemModel *model, const QStyleOptionViewItem &option, const QModelIndex &index) override
-    {
-        if (event->type() == QEvent::MouseMove)
-        {
-            QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
-            if (option.rect.contains(mouseEvent->pos()))
-            {
-                // Здесь вы можете выполнять действия при наведении мыши на элемент
-                // Например, получить индекс элемента index и выполнить нужные вам действия
-                // ...
-            }
-        }
-
-        return QStyledItemDelegate::editorEvent(event, model, option, index);
-    }
-};
+#include <QCoreApplication>
+#include <QFileDialog>
+#include <QTextStream>
+#include <QFile>
+#include <QStringList>
+#include <QDebug>
 
 int main(int argc, char *argv[])
 {
-    QApplication app(argc, argv);
+    QCoreApplication a(argc, argv);
 
-    QCompleter completer(/* ваша модель данных */, /* ваш родительский виджет */);
-    CustomCompleterDelegate completerDelegate(&completer);
-    completer.setPopupDelegate(&completerDelegate);
+    // Открываем диалог выбора файла .csv
+    QString filePath = QFileDialog::getOpenFileName(nullptr, "Выберите файл .csv", "", "CSV Files (*.csv)");
 
-    // ...
+    if (filePath.isEmpty()) {
+        qDebug() << "Файл не выбран.";
+        return 1;
+    }
+
+    // Открываем файл для чтения
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qDebug() << "Не удалось открыть файл.";
+        return 1;
+    }
+
+    QTextStream in(&file);
+
+    // Создаем списки для хранения строк
+    QList<QStringList> data;
+    QStringList header;
+
+    bool firstLine = true;
+
+    // Читаем файл и разбираем строки
+    while (!in.atEnd()) {
+        QString line = in.readLine();
+        QStringList fields = line.split(',');
+
+        if (firstLine) {
+            // Первая строка считается заголовком
+            header = fields;
+            firstLine = false;
+        } else {
+            data.append(fields);
+        }
+    }
+
+    file.close();
+
+    // Находим индексы столбцов qoq и wew
+    int qoqIndex = header.indexOf("qoq");
+    int wewIndex = header.indexOf("wew");
+
+    // Создаем списки для хранения отфильтрованных данных
+    QList<QStringList> filteredDataQoq;
+    QList<QStringList> filteredDataWew;
+
+    // Фильтруем данные по полям qoq и wew
+    for (const QStringList& row : data) {
+        if (row[qoqIndex] == "1") {
+            filteredDataQoq.append(row);
+        }
+
+        if (row[wewIndex] == "0") {
+            filteredDataWew.append(row);
+        }
+    }
+
+    // Выводим результаты
+    qDebug() << "Записи с qoq = 1:";
+    for (const QStringList& row : filteredDataQoq) {
+        qDebug() << row.join(',');
+    }
+
+    qDebug() << "Записи с wew = 0:";
+    for (const QStringList& row : filteredDataWew) {
+        qDebug() << row.join(',');
+    }
+
+    return 0;
 }
