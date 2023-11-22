@@ -1,82 +1,253 @@
-#include <QCoreApplication>
-#include <QFileDialog>
-#include <QTextStream>
-#include <QFile>
-#include <QStringList>
-#include <QDebug>
+import numpy as np
+import cv2
+import matplotlib.pyplot as plt
+from sklearn import svm
+from sklearn.metrics import confusion_matrix
+from sklearn.model_selection import cross_val_score
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import GradientBoostingClassifier
 
-int main(int argc, char *argv[])
-{
-    QCoreApplication a(argc, argv);
+def create_samples_matrix(count_samples, count_feature):
+    return np.zeros((count_samples, count_feature), dtype=np.float32)
 
-    // Открываем диалог выбора файла .csv
-    QString filePath = QFileDialog::getOpenFileName(nullptr, "Выберите файл .csv", "", "CSV Files (*.csv)");
+def fill_samples_matrix_random(samples, min_val=0.0, max_val=1.0, seed=None):
+    np.random.seed(seed)
+    samples[:] = np.random.uniform(min_val, max_val, samples.shape)
 
-    if (filePath.isEmpty()) {
-        qDebug() << "Файл не выбран.";
-        return 1;
-    }
+def generate_samples_matrix(count_samples, count_feature, min_val=0.0, max_val=1.0, seed=None):
+    samples = create_samples_matrix(count_samples, count_feature)
+    fill_samples_matrix_random(samples, min_val, max_val, seed)
+    return samples
 
-    // Открываем файл для чтения
-    QFile file(filePath);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qDebug() << "Не удалось открыть файл.";
-        return 1;
-    }
+def create_labels_matrix(count_labels):
+    return np.zeros((count_labels, 1), dtype=np.int32)
 
-    QTextStream in(&file);
+def get_label_value(col, factor=0.5):
+    if np.all(col < factor) or np.all(col > factor):
+        return 0
+    return 1
 
-    // Создаем списки для хранения строк
-    QList<QStringList> data;
-    QStringList header;
+def generate_labels_matrix(samples):
+    labels = create_labels_matrix(samples.shape[0])
+    for i in range(samples.shape[0]):
+        label = get_label_value(samples[i, :])
+        labels[i, 0] = label
+    return labels
 
-    bool firstLine = true;
+def generate_svm(type_val=svm.SVC, kernel_val='rbf', gamma=1.0, c=1.0):
+    return svm.SVC(C=c, kernel=kernel_val, gamma=gamma)
 
-    // Читаем файл и разбираем строки
-    while (!in.atEnd()) {
-        QString line = in.readLine();
-        QStringList fields = line.split(',');
+def train_svm(svm_model, samples, labels):
+    svm_model.fit(samples, labels.ravel())
 
-        if (firstLine) {
-            // Первая строка считается заголовком
-            header = fields;
-            firstLine = false;
-        } else {
-            data.append(fields);
-        }
-    }
+def predict_array(svm_model, samples):
+    return svm_model.predict(samples)
 
-    file.close();
+def cross_validation_svm(gamma_list, c_list, samples, labels):
+    best = None
+    min_error = 1.0
+    for gamma in gamma_list:
+        for c in c_list:
+            svm_model = generate_svm(gamma=gamma, c=c)
+            train_svm(svm_model, samples, labels)
+            predicted_labels = predict_array(svm_model, samples)
+            error = get_error(predicted_labels, labels)
+            if error < min_error:
+                best = svm_model
+                min_error = error
+    return best
 
-    // Находим индексы столбцов qoq и wew
-    int qoqIndex = header.indexOf("qoq");
-    int wewIndex = header.indexOf("wew");
+def get_error(predictions, labels):
+    return np.mean(predictions != labels)
 
-    // Создаем списки для хранения отфильтрованных данных
-    QList<QStringList> filteredDataQoq;
-    QList<QStringList> filteredDataWew;
+def get_confusion_matrix(predictions, labels, count_classes):
+    matrix = np.zeros((count_classes, count_classes), dtype=np.int32)
+    for i in range(predictions.shape[0]):
+        matrix[predictions[i, 0], labels[i, 0]] += 1
+    return matrix
 
-    // Фильтруем данные по полям qoq и wew
-    for (const QStringList& row : data) {
-        if (row[qoqIndex] == "1") {
-            filteredDataQoq.append(row);
-        }
+def get_confusion_matrix_in_string(error_classification_matrix):
+    max_len_str = max(len(str(val)) for val in error_classification_matrix.flatten())
+    elements = np.empty((error_classification_matrix.shape[0] + 1, error_classification_matrix.shape[1] + 1), dtype=object)
+    elements[0, 0] = ""
+    for i in range(error_classification_matrix.shape[0]):
+        elements[i + 1, 0] = f"{i + 1}(ФС)"
+    for i in range(error_classification_matrix.shape[1]):
+        elements[0, i + 1] = f"{i + 1}(ПС)"
+    for i in range(error_classification_matrix.shape[0]):
+        for j in range(error_classification_matrix.shape[1]):
+            elements[i + 1, j + 1] = str(error_classification_matrix[i, j])
+    for i in range(elements.shape[0]):
+        for j in range(elements.shape[1]):
+            elements[i, j] = str(elements[i, j]).ljust(max_len_str)
+    sb = "+".ljust(max_len_str + 1, '-')
+    for i in range(elements.shape[1] - 1):
+        sb += "+".ljust(max_len_str + 1, '-')
+    sb += "+\n"
+    for i in range(elements.shape[0]):
+        sb += "|"
+        for j in range(elements.shape[1]):
+            sb += elements[i, j] + "|"
+        sb += '\n'
+        sb += "+"
+        for j in range(elements.shape[1] - 1):
+            sb += "+".ljust(max_len_str + 1, '-')
+        sb += "+\n"
+    return sb.rstrip('\n')
 
-        if (row[wewIndex] == "0") {
-            filteredDataWew.append(row);
-        }
-    }
+def linspace(start, stop, num):
+    return np.linspace(start, stop, num)
 
-    // Выводим результаты
-    qDebug() << "Записи с qoq = 1:";
-    for (const QStringList& row : filteredDataQoq) {
-        qDebug() << row.join(',');
-    }
+def pdf(x, std, mean):
+    cons = 1.0 / np.sqrt(2 * np.pi * std**2)
+    return cons * np.exp(-(np.power(x - mean, 2) / (2.0 * std**2)))
 
-    qDebug() << "Записи с wew = 0:";
-    for (const QStringList& row : filteredDataWew) {
-        qDebug() << row.join(',');
-    }
+def get_pdf_base(false_pdf, true_pdf, x, threshold, width, height):
+    plt.figure(figsize=(width / 100, height / 100), dpi=100)
+    plt.fill_between(x, false_pdf, color='red', alpha=0.7, label='False')
+    plt.fill_between(x, true_pdf, color='green', alpha=0.7, label='True')
+    for i, th in enumerate(threshold):
+        plt.axvline(x=th, color='gray', linestyle='--', label=f"{chr(ord('A') + i)}")
+    plt.title('Гауссовское распределение двух классов')
+    plt.xlabel('Число')
+    plt.ylabel('Вероятность появления класса')
+    plt.legend(loc='upper right')
+    plt.savefig("Pdf.png")
+    mat = cv2.imread("Pdf.png")
+    return mat
 
-    return 0;
-}
+def get_roc_base(false_pdf, true_pdf, x, width, height):
+    false_sum = np.sum(false_pdf)
+    true_sum = np.sum(true_pdf)
+    cum_tp = 0
+    cum_fp = 0
+    array_tpr = np.zeros_like(x, dtype=np.float32)
+    array_fpr = np.zeros_like(x, dtype=np.float32)
+    for i in range(x.shape[0]):
+        if false_pdf[i] > 0:
+            cum_tp += true_pdf[x.shape[0] - 1 - i]
+            cum_fp += false_pdf[x.shape[0] - 1 - i]
+        fpr = cum_fp / false_sum
+        tpr = cum_tp / true_sum
+        array_tpr[i] = tpr
+        array_fpr[i] = fpr
+    auc = np.sum(array_tpr) / x.shape[0]
+    plt.figure(figsize=(width / 100, height / 100), dpi=100)
+    plt.plot(array_fpr, array_tpr, color='red', linewidth=3, label=f'ROC Line(AUC={np.round(auc, 3)})')
+    plt.plot([0, 1], [0, 1], color='orange', linestyle='--', linewidth=3, label='Middle Line')
+    plt.title('График кривой ROC')
+    plt.xlabel('FPR (Процент ложных предсказаний)')
+    plt.ylabel('TPR (Процент истинных предсказаний)')
+    plt.legend(loc='upper left')
+    plt.savefig("ROC.png")
+    mat = cv2
+
+def generate_samples_matrix(count_elements, count_feature, low=0.0, high=1.0):
+    return np.random.uniform(low, high, size=(count_elements, count_feature))
+
+def generate_labels_matrix(samples, limit1, limit2, seed=0):
+    np.random.seed(seed)
+    labels = np.zeros(samples.shape[0], dtype=int)
+    for i, sample in enumerate(samples):
+        quadrant_value = get_quadrant_value(sample, limit1, limit2)
+        label_value = get_label_value(quadrant_value)
+        labels[i] = label_value
+    return labels
+
+def get_quadrant_value(sample, limit1, limit2):
+    if sample[0] >= limit1 and sample[1] >= limit2:
+        return 1
+    elif sample[0] <= limit1 and sample[1] >= limit2:
+        return 2
+    elif sample[0] <= limit1 and sample[1] <= limit2:
+        return 3
+    else:
+        return 4
+
+def get_label_value(quadrant_value):
+    p = [0.54, 0.12, 0.08, 0.36]
+    rng = np.random.rand()
+    if rng <= p[quadrant_value - 1]:
+        return -1
+    else:
+        return 1
+
+def generate_boost_tree(max_depth):
+    return GradientBoostingClassifier(max_depth=max_depth)
+
+def train_boost_tree(boost, samples, labels):
+    boost.fit(samples, labels)
+
+def predict_array(boost, samples):
+    return boost.predict(samples)
+
+def get_error(predictions, labels):
+    return np.mean(predictions != labels)
+
+def main():
+    # Task 1 - 3
+    count_elements = 2000
+    count_train_elements = 1000
+    count_feature = 2
+    samples = generate_samples_matrix(count_elements, count_feature)
+    labels = generate_labels_matrix(samples, 0.5, 0.5)
+    svm_model = svm.SVC()
+    svm_model.fit(samples[:count_train_elements], labels[:count_train_elements])
+    filename = 'svm_model.pkl'
+    joblib.dump(svm_model, filename)
+    loaded_svm_model = joblib.load(filename)
+    samples_for_train = samples[:count_train_elements]
+    labels_for_train = labels[:count_train_elements]
+    predict_labels_train = loaded_svm_model.predict(samples_for_train)
+    predict_train_error = get_error(predict_labels_train, labels_for_train)
+    print(f'Training error: {predict_train_error * 100.0}%')
+
+    samples_for_test = samples[count_elements - count_train_elements:]
+    labels_for_test = labels[count_elements - count_train_elements:]
+    predict_labels_test = loaded_svm_model.predict(samples_for_test)
+    predict_test_error = get_error(predict_labels_test, labels_for_test)
+    print(f'Test error: {predict_test_error * 100.0}%\n\n')
+
+    # Task 4
+    std = 1.0
+    mean_false = 0.0
+    mean_true = 2.0
+    threshold_count = 7
+    point_count = 10000
+    threshold = np.linspace(mean_false, mean_true, threshold_count)
+    start = mean_false - std * 3.5
+    end = mean_true + std * 3.5
+    x = np.linspace(start, end, point_count)
+    false_pdf = pdf(x, std, mean_false)
+    true_pdf = pdf(x, std, mean_true)
+    width = 600
+    height = 600
+    plot_base(false_pdf, true_pdf, x, threshold, width, height)
+    for i in range(threshold_count):
+        plot_with_threshold(false_pdf, true_pdf, x, round(threshold[i], 3), chr(ord('A') + i), width, height)
+
+    # Task 5 - 8
+    count_elements = 10000
+    count_points = [150, 500, 1200, 5000]
+    count_feature = 2
+    samples = generate_samples_matrix(count_elements, count_feature, 0.0, 128.0)
+    labels = generate_labels_matrix(samples, 63.0, 63.0)
+    max_depths = [5, 10, 15, 20, 25]
+    boost_trees = [generate_boost_tree(max_depth) for max_depth in max_depths]
+    print('\n')
+    for boost in boost_trees:
+        for size in count_points:
+            train_boost_tree(boost, samples[:size], labels[:size])
+            predictions = predict_array(boost, samples[size:])
+            error = get_error(predictions, labels[size:])
+            print(f'Error for Boost with max depth {boost.max_depth} and {size} data points = {error}')
+    print('\n')
+    for size in count_points:
+        svm_model = svm.SVC()
+        svm_model.fit(samples[:size], labels[:size])
+        predictions = predict_array(svm_model, samples[size:])
+        error = get_error(predictions, labels[size:])
+        print(f'Error for SVM with {size} data points = {error}')
+
+if __name__ == "__main__":
+    main()
